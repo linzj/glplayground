@@ -1,0 +1,94 @@
+CMAKE_MINIMUM_REQUIRED( VERSION 2.6 )
+
+PROJECT( Tessellation )
+
+#FILE( GLOB GLEW lib/glew/*.c lib/glew/*.h )
+#FILE( GLOB GLSW lib/glsw/*.c lib/glsw/*.h )
+#FILE( GLOB VECTORMATH lib/vectormath/*.h )
+
+IF( WIN32 )
+
+    #FILE( GLOB PEZ
+    #    lib/libpez/pez.h
+    #    lib/libpez/pez.windows.c
+    #)
+
+    #SOURCE_GROUP( "shaders" FILES Geodesic.glsl )
+    #SOURCE_GROUP( "glew" FILES ${GLEW} )
+    #SOURCE_GROUP( "glsw" FILES ${GLSW} )
+    #SOURCE_GROUP( "vectormath" FILES ${VECTORMATH} )
+    #SOURCE_GROUP( "pez" FILES ${PEZ} )
+
+    #ADD_DEFINITIONS( -DGLEW_STATIC )
+    #ADD_DEFINITIONS( /wd4996 /TP )
+    SET( PLATFORM_LIBS opengl32 freeglut glew glsw)
+    #SET( CONSOLE_SYSTEM WIN32 )
+
+ELSEIF( APPLE )
+
+    # Create a nibless project per http://blog.hyperjeff.net/code?id=292
+    
+    #FILE( GLOB PEZ
+    #    lib/libpez/pez.h
+    #    lib/libpez/pez.cocoa.m
+    #)
+
+    FIND_LIBRARY( COCOA_LIBRARY Cocoa )
+
+    SET( PLATFORM_LIBS
+        ${COCOA_LIBRARY}
+        /System/Library/Frameworks/OpenGL.framework )
+
+ELSEIF( UNIX )
+
+    FIND_PACKAGE(OpenGL REQUIRED)
+    INCLUDE_DIRECTORIES(${OpenGL_INCLUDE_DIRS})
+    LINK_DIRECTORIES(${OpenGL_LIBRARY_DIRS})
+    ADD_DEFINITIONS(${OpenGL_DEFINITIONS})
+    if(NOT OPENGL_FOUND)
+        MESSAGE(ERROR " OPENGL not found!")
+    endif(NOT OPENGL_FOUND)
+
+    FIND_PACKAGE(GLUT REQUIRED)
+    INCLUDE_DIRECTORIES(${GLUT_INCLUDE_DIRS})
+    LINK_DIRECTORIES(${GLUT_LIBRARY_DIRS})
+    ADD_DEFINITIONS(${GLUT_DEFINITIONS})
+    if(NOT GLUT_FOUND)
+        MESSAGE(ERROR " GLUT not found!")
+    endif(NOT GLUT_FOUND)
+
+    FIND_PACKAGE(GLEW REQUIRED)
+    INCLUDE_DIRECTORIES(${GLEW_INCLUDE_DIRS})
+    LINK_DIRECTORIES(${GLEW_LIBRARY_DIRS})
+    ADD_DEFINITIONS(${GLEW_DEFINITIONS})
+    if(NOT GLEW_FOUND)
+        MESSAGE(ERROR " GLEW not found!")
+    endif(NOT GLEW_FOUND)
+
+    SET( PLATFORM_LIBS ${GLEW_LIBRARIES} ${GLUT_LIBRARIES} ${OPENGL_LIBRARIES} X11 GL m)
+    SET(CMAKE_C_FLAGS "-O0 -ggdb")
+    SET(CMAKE_CXX_FLAGS "-O0 -ggdb -std=c++11")
+
+ENDIF()
+
+#INCLUDE_DIRECTORIES(
+#    lib/glew
+#    lib/glsw
+#    lib/libpez
+#)
+#
+#ADD_LIBRARY( PezEcosystem
+#    ${GLEW}
+#    ${GLSW}
+#    ${VECTORMATH}
+#    ${PEZ}
+#)
+#set(CMAKE_C_FLAGS "-O0 -ggdb")
+#ADD_EXECUTABLE( Geodesic ${CONSOLE_SYSTEM} Geodesic.c Geodesic.glsl )
+#TARGET_LINK_LIBRARIES( Geodesic PezEcosystem ${PLATFORM_LIBS} )
+
+ADD_EXECUTABLE( simple_triangle ${CONSOLE_SYSTEM} simple-triangle.c )
+TARGET_LINK_LIBRARIES( simple_triangle ${PLATFORM_LIBS})
+
+ADD_EXECUTABLE( glu_star ${CONSOLE_SYSTEM} glu_star.cpp )
+TARGET_LINK_LIBRARIES( glu_star ${PLATFORM_LIBS})
