@@ -16,6 +16,17 @@ cmake
 
 Introduction
 ---------------
-Simple Triangle: a hello world.
+
+
+simple-triangle: a hello world.
+
+
+glu-star: Testing glu tessellation.
+
+
+etc1\*: Test etc1 gpu/cpu by cs/frag shader.
+
+
+s3tc\*: Test s3tc.
 
 **Just Enjoy It**.
