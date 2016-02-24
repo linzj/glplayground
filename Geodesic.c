@@ -340,20 +340,28 @@ drawOnFbo(void)
 {
   GLint tmpFramebuffer;
   GLint tmpRenderbuffer;
+  GLint tmpRenderbufferDepth;
   GLint viewport[4];
+  GLint fboCompleteness;
 
   glGetIntegerv(GL_VIEWPORT, viewport);
   glGenFramebuffers(1, &tmpFramebuffer);
   glGenRenderbuffers(1, &tmpRenderbuffer);
+  glGenRenderbuffers(1, &tmpRenderbufferDepth);
   glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
   glBindRenderbuffer(GL_RENDERBUFFER, tmpRenderbuffer);
   glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_RGBA, viewport[2],
                                    viewport[3]);
+  glBindRenderbuffer(GL_RENDERBUFFER, tmpRenderbufferDepth);
+  glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_DEPTH24_STENCIL8, viewport[2],
+                                   viewport[3]);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                             GL_RENDERBUFFER, tmpRenderbuffer);
-  if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
-    fprintf(stderr, "fbo is not completed.\n");
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                            GL_RENDERBUFFER, tmpRenderbufferDepth);
+  if (GL_FRAMEBUFFER_COMPLETE != (fboCompleteness = glCheckFramebufferStatus(GL_FRAMEBUFFER))) {
+    fprintf(stderr, "fbo is not completed :%x.\n", fboCompleteness);
     exit(1);
   }
   PezRender();
@@ -365,6 +373,7 @@ drawOnFbo(void)
   glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
   glDeleteFramebuffers(1, &tmpFramebuffer);
   glDeleteRenderbuffers(1, &tmpRenderbuffer);
+  glDeleteRenderbuffers(1, &tmpRenderbufferDepth);
   checkError("triangle");
 }
 
@@ -456,7 +465,7 @@ main(int argc, char** argv)
 {
   int menuA;
   glutInit(&argc, argv);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   /* add command line argument "classic" for a pre-3.x context */
   if ((argc != 2) || (strcmp(argv[1], "classic") != 0)) {
     glutInitContextVersion(4, 3);
