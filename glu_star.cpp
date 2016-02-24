@@ -486,6 +486,7 @@ triangle(void)
     fprintf(stderr, "fbo is not completed.\n");
     exit(1);
   }
+  glClear(GL_COLOR_BUFFER_BIT);
   triangle_normal();
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   // blit here
