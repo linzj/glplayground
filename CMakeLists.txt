@@ -3,9 +3,9 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.0 )
 PROJECT( Tessellation )
 
 #FILE( GLOB GLEW lib/glew/*.c lib/glew/*.h )
-#FILE( GLOB GLSW lib/glsw/*.c lib/glsw/*.h )
 #FILE( GLOB VECTORMATH lib/vectormath/*.h )
 FILE( GLOB SQUISH_SRC squish/*.h squish/*.cpp )
+FILE( GLOB GLSW_SRC lib/glsw/*.c lib/glsw/*.h )
 
 IF( WIN32 )
 
@@ -110,3 +110,7 @@ ADD_EXECUTABLE( s3tc_cpu ${CONSOLE_SYSTEM} s3tc_cpu.cpp ${SQUISH_SRC} )
 TARGET_INCLUDE_DIRECTORIES( s3tc_cpu PRIVATE squish )
 TARGET_COMPILE_DEFINITIONS(s3tc_cpu PRIVATE "SQUISH_USE_SSE=2")
 TARGET_LINK_LIBRARIES( s3tc_cpu ${PLATFORM_LIBS})
+
+ADD_EXECUTABLE( Geodesic ${CONSOLE_SYSTEM} Geodesic.c ${GLSW_SRC} )
+TARGET_INCLUDE_DIRECTORIES( Geodesic PRIVATE lib/glsw lib/vectormath)
+TARGET_LINK_LIBRARIES( Geodesic ${PLATFORM_LIBS})

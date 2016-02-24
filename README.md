@@ -29,4 +29,6 @@ etc1\*: Test etc1 gpu/cpu by cs/frag shader.
 
 s3tc\*: Test s3tc.
 
+Geodesic: OpenGL 4.0 tessellation.
+
 **Just Enjoy It**.
