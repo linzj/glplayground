@@ -6,6 +6,10 @@ PROJECT( Tessellation )
 #FILE( GLOB VECTORMATH lib/vectormath/*.h )
 FILE( GLOB SQUISH_SRC squish/*.h squish/*.cpp )
 FILE( GLOB GLSW_SRC lib/glsw/*.c lib/glsw/*.h )
+ADD_SUBDIRECTORY (freeglut-3.0.0)
+ADD_SUBDIRECTORY (glew-1.13.0)
+INCLUDE_DIRECTORIES(freeglut-3.0.0/include glew-1.13.0/include)
+
 
 IF( WIN32 )
 
@@ -20,10 +24,11 @@ IF( WIN32 )
     #SOURCE_GROUP( "vectormath" FILES ${VECTORMATH} )
     #SOURCE_GROUP( "pez" FILES ${PEZ} )
 
-    #ADD_DEFINITIONS( -DGLEW_STATIC )
+    ADD_DEFINITIONS( -DFREEGLUT_STATIC=1 -DGLEW_STATIC=1 )
     #ADD_DEFINITIONS( /wd4996 /TP )
-    SET( PLATFORM_LIBS opengl32 freeglut glew glsw)
+    SET( PLATFORM_LIBS opengl32 glu32)
     #SET( CONSOLE_SYSTEM WIN32 )
+    SET(CMAKE_CXX_FLAGS "-O2 -ggdb -std=c++11")
 
 ELSEIF( APPLE )
 
@@ -89,28 +94,28 @@ ENDIF()
 #TARGET_LINK_LIBRARIES( Geodesic PezEcosystem ${PLATFORM_LIBS} )
 
 ADD_EXECUTABLE( simple_triangle ${CONSOLE_SYSTEM} simple-triangle.c )
-TARGET_LINK_LIBRARIES( simple_triangle ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( simple_triangle ${PLATFORM_LIBS} freeglut_static glew)
 
 ADD_EXECUTABLE( glu_star ${CONSOLE_SYSTEM} glu_star.cpp )
-TARGET_LINK_LIBRARIES( glu_star ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( glu_star ${PLATFORM_LIBS} freeglut_static glew)
 
 ADD_EXECUTABLE( etc1_cpu ${CONSOLE_SYSTEM} etc1_cpu.c )
-TARGET_LINK_LIBRARIES( etc1_cpu ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( etc1_cpu ${PLATFORM_LIBS} freeglut_static glew)
 
 ADD_EXECUTABLE( etc1_cs ${CONSOLE_SYSTEM} etc1_cs.c )
-TARGET_LINK_LIBRARIES( etc1_cs ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( etc1_cs ${PLATFORM_LIBS} freeglut_static glew)
 
 ADD_EXECUTABLE( etc1_frag ${CONSOLE_SYSTEM} etc1_frag.c )
-TARGET_LINK_LIBRARIES( etc1_frag ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( etc1_frag ${PLATFORM_LIBS} freeglut_static glew)
 
 ADD_EXECUTABLE( s3tc_cs ${CONSOLE_SYSTEM} s3tc_cs.c )
-TARGET_LINK_LIBRARIES( s3tc_cs ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( s3tc_cs ${PLATFORM_LIBS} freeglut_static glew)
 
 ADD_EXECUTABLE( s3tc_cpu ${CONSOLE_SYSTEM} s3tc_cpu.cpp ${SQUISH_SRC} )
 TARGET_INCLUDE_DIRECTORIES( s3tc_cpu PRIVATE squish )
 TARGET_COMPILE_DEFINITIONS(s3tc_cpu PRIVATE "SQUISH_USE_SSE=2")
-TARGET_LINK_LIBRARIES( s3tc_cpu ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( s3tc_cpu ${PLATFORM_LIBS} freeglut_static glew)
 
 ADD_EXECUTABLE( Geodesic ${CONSOLE_SYSTEM} Geodesic.c ${GLSW_SRC} )
 TARGET_INCLUDE_DIRECTORIES( Geodesic PRIVATE lib/glsw lib/vectormath)
-TARGET_LINK_LIBRARIES( Geodesic ${PLATFORM_LIBS})
+TARGET_LINK_LIBRARIES( Geodesic ${PLATFORM_LIBS} freeglut_static glew)

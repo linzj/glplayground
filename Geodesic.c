@@ -408,12 +408,6 @@ reshape(int w, int h)
 static void
 keyboard(unsigned char key, int x, int y)
 {
-
-  const int VK_LEFT = 0x25;
-  const int VK_UP = 0x26;
-  const int VK_RIGHT = 0x27;
-  const int VK_DOWN = 0x28;
-
   switch (key) {
     case 27:
       exit(0);
