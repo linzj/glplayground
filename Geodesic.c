@@ -353,14 +353,15 @@ drawOnFbo(void)
   glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_RGBA, viewport[2],
                                    viewport[3]);
   glBindRenderbuffer(GL_RENDERBUFFER, tmpRenderbufferDepth);
-  glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_DEPTH24_STENCIL8, viewport[2],
-                                   viewport[3]);
+  glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_DEPTH24_STENCIL8,
+                                   viewport[2], viewport[3]);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                             GL_RENDERBUFFER, tmpRenderbuffer);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
                             GL_RENDERBUFFER, tmpRenderbufferDepth);
-  if (GL_FRAMEBUFFER_COMPLETE != (fboCompleteness = glCheckFramebufferStatus(GL_FRAMEBUFFER))) {
+  if (GL_FRAMEBUFFER_COMPLETE !=
+      (fboCompleteness = glCheckFramebufferStatus(GL_FRAMEBUFFER))) {
     fprintf(stderr, "fbo is not completed :%x.\n", fboCompleteness);
     exit(1);
   }
