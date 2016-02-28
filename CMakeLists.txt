@@ -1,6 +1,6 @@
 CMAKE_MINIMUM_REQUIRED( VERSION 3.0 )
 
-PROJECT( Tessellation )
+PROJECT( glplayground )
 
 #FILE( GLOB GLEW lib/glew/*.c lib/glew/*.h )
 #FILE( GLOB VECTORMATH lib/vectormath/*.h )
@@ -8,8 +8,9 @@ FILE( GLOB SQUISH_SRC squish/*.h squish/*.cpp )
 FILE( GLOB GLSW_SRC lib/glsw/*.c lib/glsw/*.h )
 ADD_SUBDIRECTORY (freeglut-3.0.0)
 ADD_SUBDIRECTORY (glew-1.13.0)
+ADD_SUBDIRECTORY (graduate-article)
+ADD_DEFINITIONS( -DFREEGLUT_STATIC=1 -DGLEW_STATIC=1 )
 INCLUDE_DIRECTORIES(freeglut-3.0.0/include glew-1.13.0/include)
-
 
 IF( WIN32 )
 
@@ -24,7 +25,6 @@ IF( WIN32 )
     #SOURCE_GROUP( "vectormath" FILES ${VECTORMATH} )
     #SOURCE_GROUP( "pez" FILES ${PEZ} )
 
-    ADD_DEFINITIONS( -DFREEGLUT_STATIC=1 -DGLEW_STATIC=1 )
     #ADD_DEFINITIONS( /wd4996 /TP )
     SET( PLATFORM_LIBS opengl32 glu32)
     #SET( CONSOLE_SYSTEM WIN32 )
@@ -55,9 +55,11 @@ ELSEIF( UNIX )
         MESSAGE(ERROR " OPENGL not found!")
     endif(NOT OPENGL_FOUND)
 
-    SET( PLATFORM_LIBS ${OPENGL_LIBRARIES} X11 GL m)
+    SET(PLATFORM_LIBS ${OPENGL_LIBRARIES} X11 m)
     SET(CMAKE_C_FLAGS "-O0 -ggdb")
     SET(CMAKE_CXX_FLAGS "-O0 -ggdb -std=c++11")
+    SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+    SET(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
 
 ENDIF()
 
