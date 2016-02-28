@@ -26,9 +26,9 @@ typedef unsigned int UINT;
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
 #ifdef _WIN32
-typedef unsigned __int64 UINT64;
+typedef unsigned long long UINT64;
 #else
-typedef unsigned long UINT64;
+typedef unsigned long long UINT64;
 #endif
 
 typedef struct
