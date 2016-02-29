@@ -208,6 +208,8 @@ SdkModel::loadSdkMeshFromFile(const char* filename)
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_header->SizeBytes,
                file_content + index_buffer_header->DataOffset, GL_STATIC_DRAW);
   lin::unmapFile(file_content);
+  glBindVertexArray(0);
+
   if (GL_NO_ERROR != glGetError()) {
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -246,11 +248,11 @@ SdkModel::draw()
 {
   using namespace lin;
   glBindVertexArray(vertex_array);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer[1]);
   glFrontFace(GL_CW);
   glMultiDrawElementsBaseVertex(GL_TRIANGLES, index_counts, index_type,
                                 index_starts, numsubsets, vertex_starts);
   glFrontFace(GL_CCW);
+  glBindVertexArray(0);
 }
 
 bool
