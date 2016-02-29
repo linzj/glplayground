@@ -208,16 +208,14 @@ SdkModel::loadSdkMeshFromFile(const char* filename)
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_header->SizeBytes,
                file_content + index_buffer_header->DataOffset, GL_STATIC_DRAW);
   lin::unmapFile(file_content);
-  glBindVertexArray(0);
 
   if (GL_NO_ERROR != glGetError()) {
     glBindVertexArray(0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glDeleteVertexArrays(1, &vertex_array);
     glDeleteBuffers(2, buffer);
     return false;
   }
+  glBindVertexArray(0);
   return true;
 failed:
   lin::unmapFile(file_content);
