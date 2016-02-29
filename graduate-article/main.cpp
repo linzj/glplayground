@@ -46,7 +46,7 @@ main(int argc, char* argv[])
   try {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitContextVersion(3, 2);
+    // glutInitContextVersion(3, 2);
     glutInitWindowSize(800, 600);
     // glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
     glutCreateWindow("Order Independent Translucency");

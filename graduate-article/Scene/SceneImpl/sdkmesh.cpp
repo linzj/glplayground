@@ -18,7 +18,7 @@ public:
 private:
   GLenum index_type;
   GLuint vertex_array;
-  GLuint buffer[2];
+  GLuint buffer[3];
   GLsizei* index_counts;
   const GLvoid** index_starts;
   GLint* vertex_starts;
@@ -26,6 +26,7 @@ private:
 
 private:
   bool _allocateSubsets(int count);
+  void initInDirectBufferIfOkay(SDKMESH_MESH*, SDKMESH_SUBSET*, UINT*);
 };
 
 SdkModel::SdkModel()
@@ -132,7 +133,7 @@ SdkModel::loadSdkMeshFromFile(const char* filename)
   if (glGetError() != GL_NO_ERROR) {
     goto failed;
   }
-  glGenBuffers(2, buffer);
+  glGenBuffers(3, buffer);
   if (glGetError() != GL_NO_ERROR)
     goto failed;
 
@@ -207,6 +208,7 @@ SdkModel::loadSdkMeshFromFile(const char* filename)
                file_content + vertex_buffer_header->DataOffset, GL_STATIC_DRAW);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_header->SizeBytes,
                file_content + index_buffer_header->DataOffset, GL_STATIC_DRAW);
+  initInDirectBufferIfOkay(mesh, subset, subset_indices);
   lin::unmapFile(file_content);
 
   if (GL_NO_ERROR != glGetError()) {
@@ -229,7 +231,7 @@ SdkModel::~SdkModel()
   glBindBuffer(GL_ARRAY_BUFFER, buffer[0]);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer[1]);
   glDeleteVertexArrays(1, &vertex_array);
-  glDeleteBuffers(2, buffer);
+  glDeleteBuffers(3, buffer);
   if (index_counts) {
     delete[] index_counts;
   }
@@ -247,8 +249,13 @@ SdkModel::draw()
   using namespace lin;
   glBindVertexArray(vertex_array);
   glFrontFace(GL_CW);
-  glMultiDrawElementsBaseVertex(GL_TRIANGLES, index_counts, index_type,
-                                index_starts, numsubsets, vertex_starts);
+  if (!GLEW_VERSION_4_3) {
+    glMultiDrawElementsBaseVertex(GL_TRIANGLES, index_counts, index_type,
+                                  index_starts, numsubsets, vertex_starts);
+  } else {
+    glMultiDrawElementsIndirect(GL_TRIANGLES, index_type, nullptr, numsubsets,
+                                0);
+  }
   glFrontFace(GL_CCW);
   glBindVertexArray(0);
 }
@@ -298,5 +305,41 @@ createDrawableModel(const char* file_name)
   if (!model->loadSdkMeshFromFile(file_name))
     return NULL;
   return model;
+}
+void
+SdkModel::initInDirectBufferIfOkay(SDKMESH_MESH* mesh, SDKMESH_SUBSET* subset,
+                                   UINT* subset_indices)
+{
+  typedef struct
+  {
+    GLuint count;
+    GLuint instanceCount;
+    GLuint firstIndex;
+    GLuint baseVertex;
+    GLuint baseInstance;
+  } DrawElementsIndirectCommand;
+  DrawElementsIndirectCommand* cmds;
+  if (!GLEW_VERSION_4_3) {
+    return;
+  }
+  glBindBuffer(GL_DRAW_INDIRECT_BUFFER, buffer[2]);
+  glBufferData(GL_DRAW_INDIRECT_BUFFER,
+               sizeof(DrawElementsIndirectCommand) * mesh->NumSubsets, nullptr,
+               GL_DYNAMIC_DRAW);
+  cmds = static_cast<DrawElementsIndirectCommand*>(
+    glMapBuffer(GL_DRAW_INDIRECT_BUFFER, GL_WRITE_ONLY));
+  for (UINT i = 0; i != mesh->NumSubsets; ++i) {
+    UINT* cur_index = subset_indices + i;
+    SDKMESH_SUBSET* cur = subset + *cur_index;
+    if (cur->PrimitiveType != PT_TRIANGLE_LIST)
+      __builtin_unreachable();
+    DrawElementsIndirectCommand* curcmd = cmds + i;
+    curcmd->count = cur->IndexCount;
+    curcmd->instanceCount = 1;
+    curcmd->firstIndex = cur->IndexStart;
+    curcmd->baseVertex = 0;
+    curcmd->baseInstance = 0;
+  }
+  glUnmapBuffer(GL_DRAW_INDIRECT_BUFFER);
 }
 }
