@@ -1,7 +1,17 @@
 #version 430
 layout(local_size_x = 1, local_size_y = 1) in;
 layout(rgba8) uniform readonly image2D u_Texture;
-layout(rg32ui) uniform writeonly uimage2D u_OutputImage;
+
+struct member
+{
+  uint lo;
+  uint hi;
+};
+
+layout (std430, binding = 10) writeonly buffer OutputBuffer
+{
+    member members[];
+} u_OutputImage;
 
 // find minimum and maximum colors based on bounding box in color space
 void FindMinMaxColorsBox(in vec3 block[16], out vec3 mincol, out vec3 maxcol)
@@ -123,5 +133,7 @@ void main()
 
   uint ir = EmitEndPointsDXT1(mincol, maxcol);
   uint ig = EmitIndicesDXT1(rgbmap, mincol, maxcol);
-  imageStore(u_OutputImage, ivec2(x, y), uvec4(ir, ig, 0, 1));
+  uint index = y * gl_NumWorkGroups.x + x;
+  u_OutputImage.members[index].lo = ir;
+  u_OutputImage.members[index].hi = ig;
 }

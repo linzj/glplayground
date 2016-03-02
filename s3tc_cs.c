@@ -221,7 +221,6 @@ static GLuint u_TextureRender;
 static GLuint u_TextureComputeETC1;
 static GLuint u_OutComputeETC1;
 static GLuint u_TextureComputeS3TC;
-static GLuint u_OutComputeS3TC;
 
 static void
 loadWorker(const char* name, char*** ppfragmentShaderSource, int* lineCount)
@@ -322,9 +321,7 @@ initShader(void)
     exit(1);
   }
   u_TextureComputeS3TC = glGetUniformLocation(computeProgramS3TC, "u_Texture");
-  u_OutComputeS3TC = glGetUniformLocation(computeProgramS3TC, "u_OutputImage");
-  printf("u_TextureComputeS3TC: %u, u_OutComputeS3TC: %u.\n",
-         u_TextureComputeS3TC, u_OutComputeS3TC);
+  printf("u_TextureComputeS3TC: %u.\n", u_TextureComputeS3TC);
 
   glGetIntegerv(GL_MAX_IMAGE_UNITS, &maxImageUnits);
   printf("maxImageUnits: %d.\n", maxImageUnits);
@@ -354,6 +351,7 @@ init(void)
     fprintf(stderr, "OpenGL 4.3 fails");
     exit(1);
   }
+
   initTextureDatas();
   initBuffer();
   initShader();
@@ -384,12 +382,11 @@ triangle_normal(void)
 {
   FILE* file;
   GLubyte* data;
-  GLuint textureObject[4];
+  GLuint textureObject[3];
   GLuint pbo[1];
-  GLuint fbo[1];
 
   // load texture
-  glGenTextures(4, textureObject);
+  glGenTextures(3, textureObject);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, textureObject[0]);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -402,11 +399,6 @@ triangle_normal(void)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, encoded_width, encoded_height, 0,
                GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-  glBindTexture(GL_TEXTURE_2D, textureObject[2]);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32UI, encoded_width / 4,
-               encoded_height / 4, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, NULL);
   // compute etc1
   glUseProgram(computeProgramETC1);
   // assume output image unit is 0
@@ -420,33 +412,19 @@ triangle_normal(void)
   glDispatchCompute(encoded_width / 4, encoded_height / 4, 1);
   // compute s3tc
   glUseProgram(computeProgramS3TC);
-  // assume output image unit is 0
-  glUniform1i(u_OutComputeS3TC, 0);
-  // assume input image unit is 1
-  glUniform1i(u_TextureComputeS3TC, 1);
-  glBindImageTexture(0, textureObject[2], 0, GL_FALSE, 0, GL_WRITE_ONLY,
-                     GL_RG32UI);
-  glBindImageTexture(1, textureObject[1], 0, GL_FALSE, 0, GL_READ_ONLY,
-                     GL_RGBA8);
-  glDispatchCompute(encoded_width / 4, encoded_height / 4, 1);
-  // get back the texturedata to pbo
   glGenBuffers(1, pbo);
-  glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo[0]);
-  glBufferData(GL_PIXEL_PACK_BUFFER, encoded_width * encoded_height / 2, NULL,
-               GL_STREAM_COPY);
-  // glBindTexture(GL_TEXTURE_2D, textureObject[2]);
-  // glGetTexImage(GL_TEXTURE_2D, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, NULL);
-  glGenFramebuffers(1, fbo);
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo[0]);
-  glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                         GL_TEXTURE_2D, textureObject[2], 0);
-  glReadPixels(0, 0, encoded_width / 4, encoded_height / 4, GL_RG_INTEGER,
-               GL_UNSIGNED_INT, NULL);
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-  glDeleteFramebuffers(1, fbo);
-  glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, pbo[0]);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, encoded_width * encoded_height / 2,
+               NULL, GL_DYNAMIC_COPY);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, pbo[0]);
+  glBindImageTexture(0, textureObject[1], 0, GL_FALSE, 0, GL_READ_ONLY,
+                     GL_RGBA8);
+  // assume input image unit is 1
+  glUniform1i(u_TextureComputeS3TC, 0);
+  glDispatchCompute(encoded_width / 4, encoded_height / 4, 1);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
   // init the render texture
-  glBindTexture(GL_TEXTURE_2D, textureObject[3]);
+  glBindTexture(GL_TEXTURE_2D, textureObject[2]);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo[0]);
@@ -462,7 +440,7 @@ triangle_normal(void)
   glUniform1i(u_TextureRender, 0);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, numElements);
 
-  glDeleteTextures(4, textureObject);
+  glDeleteTextures(3, textureObject);
   glDeleteBuffers(1, pbo);
   checkError("triangle_normal");
 }

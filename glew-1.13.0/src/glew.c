@@ -13411,7 +13411,7 @@ GLboolean glewExperimental = GL_FALSE;
 
 #if !defined(GLEW_MX)
 
-GLenum GLEWAPIENTRY glewInit (void)
+static GLenum _glewInit (void)
 {
   GLenum r;
   r = glewContextInit();
@@ -13423,6 +13423,15 @@ GLenum GLEWAPIENTRY glewInit (void)
 #else
   return r;
 #endif /* _WIN32 */
+}
+
+GLenum GLEWAPIENTRY glewInit (void)
+{
+    GLenum r;
+    r = _glewInit();
+    if (r != 0) return r;
+    glGetError();
+    return r;
 }
 
 #endif /* !GLEW_MX */
