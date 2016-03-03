@@ -394,6 +394,8 @@ triangle_normal(void)
   glBindImageTexture(1, textureObject[0], 0, GL_FALSE, 0, GL_READ_ONLY,
                      GL_R8UI);
   glDispatchCompute(encoded_width / 4, encoded_height / 4, 1);
+  // image memory barrier
+  glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
   // render
   glBindTexture(GL_TEXTURE_2D, textureObject[1]);
   glUseProgram(renderProgram);

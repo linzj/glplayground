@@ -410,6 +410,8 @@ triangle_normal(void)
   glBindImageTexture(1, textureObject[0], 0, GL_FALSE, 0, GL_READ_ONLY,
                      GL_R8UI);
   glDispatchCompute(encoded_width / 4, encoded_height / 4, 1);
+  // image memory barrier
+  glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
   // compute s3tc
   glUseProgram(computeProgramS3TC);
   glGenBuffers(1, pbo);
@@ -422,6 +424,8 @@ triangle_normal(void)
   // assume input image unit is 1
   glUniform1i(u_TextureComputeS3TC, 0);
   glDispatchCompute(encoded_width / 4, encoded_height / 4, 1);
+  // pixel buffer barrier
+  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_PIXEL_BUFFER_BARRIER_BIT);
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
   // init the render texture
   glBindTexture(GL_TEXTURE_2D, textureObject[2]);
