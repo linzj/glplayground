@@ -78,20 +78,20 @@ checkError(const char* functionName)
 GLuint vertexBufferName;
 GLuint vertexArrayName;
 
-const char* vertexShaderSource[] = {
-  "#version 120\n",
-  "attribute vec4 v_position;\n",
-  "void main()\n",
-  "{\n",
-  "   gl_Position = v_position;\n",
-  "}\n"
-};
+const char* vertexShaderSource[] = { "#version 120\n",
+                                     "attribute vec4 v_position;\n",
+                                     "void main()\n",
+                                     "{\n",
+                                     "   gl_Position = v_position;\n",
+                                     "}\n" };
 
-const char* fragmentShaderSource[] = { "#version 120\n",
-                                       "void main(void)\n",
-                                       "{\n",
-                                       "   gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n",
-                                       "}\n" };
+const char* fragmentShaderSource[] = {
+  "#version 120\n", "uniform sampler2D u_texture;\n",
+  "uniform ivec2 u_screenGeometry;\n"
+  "void main(void)\n",
+  "{\n", "   vec2 texcoord = gl_FragCoord.xy / vec2(u_screenGeometry);\n",
+  "   gl_FragColor = texture2D(u_texture, texcoord);\n", "}\n"
+};
 
 void
 compileAndCheck(GLuint shader)
@@ -150,9 +150,11 @@ createProgram(GLuint vertexShader, GLuint fragmentShader)
   return program;
 }
 
-static GLint vpositionIndex;
+static GLint vPositionIndex;
+static GLint uTexture;
+static GLint uScreenGeometry;
 
-void
+static void
 initShader(void)
 {
   const GLsizei vertexShaderLines = sizeof(vertexShaderSource) / sizeof(char*);
@@ -167,8 +169,11 @@ initShader(void)
   GLuint program = createProgram(vertexShader, fragmentShader);
 
   glUseProgram(program);
-  vpositionIndex = glGetAttribLocation(program, "v_position");
-  printf("vpositionIndex: %d.\n", vpositionIndex);
+  vPositionIndex = glGetAttribLocation(program, "v_position");
+  printf("vPositionIndex: %d.\n", vPositionIndex);
+  uTexture = glGetUniformLocation(program, "u_texture");
+  uScreenGeometry = glGetUniformLocation(program, "u_screenGeometry");
+  printf("uTexture: %d, uScreenGeometry: %d.\n", uTexture, uScreenGeometry);
 
   checkError("initShader");
 }
@@ -178,6 +183,20 @@ initRendering(void)
 {
   glClearColor(0.0, 0.0, 0.0, 0.0);
   checkError("initRendering");
+}
+
+static GLuint g_texture;
+void
+initTexture(void)
+{
+  glGenTextures(1, &g_texture);
+  glBindTexture(GL_TEXTURE_2D, g_texture);
+  nv::Image* image = g_image.get();
+  glTexImage2D(GL_TEXTURE_2D, 0, image->getInternalFormat(), image->getWidth(),
+               image->getHeight(), 0, image->getFormat(), image->getType(),
+               image->getLevel(0));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
 void
@@ -193,6 +212,7 @@ init(void)
     fprintf(stderr, "OpenGL 3.3 fails");
     exit(1);
   }
+  initTexture();
   initShader();
   initRendering();
 }
@@ -219,15 +239,22 @@ static void
 triangle_normal(void)
 {
   float positions[][4] = {
-          {-1.0, 1.0, 0.0, 1.0},
-          {-1.0, -1.0, 0.0, 1.0},
-          {1.0, 1.0, 0.0, 1.0},
-          {1.0, -1.0, 0.0, 1.0},
+    { -1.0, 1.0, 0.0, 1.0 },
+    { -1.0, -1.0, 0.0, 1.0 },
+    { 1.0, 1.0, 0.0, 1.0 },
+    { 1.0, -1.0, 0.0, 1.0 },
   };
-  glVertexAttribPointer(vpositionIndex, 4, GL_FLOAT, GL_FALSE, 0, positions);
-  glEnableVertexAttribArray(vpositionIndex);
+  GLint viewport[4];
+  glVertexAttribPointer(vPositionIndex, 4, GL_FLOAT, GL_FALSE, 0, positions);
+  glEnableVertexAttribArray(vPositionIndex);
+  // setup uniforms
+  glGetIntegerv(GL_VIEWPORT, viewport);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, g_texture);
+  glUniform1i(uTexture, 0);
+  glUniform2iv(uScreenGeometry, 1, &viewport[2]);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glDisableVertexAttribArray(vpositionIndex);
+  glDisableVertexAttribArray(vPositionIndex);
 }
 
 static void
@@ -238,7 +265,6 @@ display(void)
   glFlush();
   checkError("display");
 }
-
 
 static void
 reshape(int w, int h)
@@ -272,13 +298,13 @@ main(int argc, char** argv)
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
   if (argc != 2) {
-      fprintf(stderr, "need a file name.\n");
-      exit(1);
+    fprintf(stderr, "need a file name.\n");
+    exit(1);
   }
   g_image.reset(gaussianLoadImageFromFile(argv[1]));
   if (g_image.get() == nullptr) {
-      fprintf(stderr, "fails to load image.\n");
-      exit(1);
+    fprintf(stderr, "fails to load image.\n");
+    exit(1);
   }
   glutInitWindowSize(500, 500);
   glutInitWindowPosition(100, 100);
