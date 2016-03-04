@@ -48,8 +48,32 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <nvImage.h>
 #include <memory>
+#include <cmath>
+#include <vector>
+
+static std::unique_ptr<nv::Image> g_image;
+
+static GLint vPositionIndexRow;
+static GLint uTextureRow;
+static GLint uScreenGeometryRow;
+static GLint uKernelRow;
+static GLint g_programRow;
+
+static GLint vPositionIndexColumn;
+static GLint uTextureColumn;
+static GLint uScreenGeometryColumn;
+static GLint uKernelColumn;
+static GLint g_programColumn;
+
+static char** gaussianFragRowSource;
+static int gaussianFragRowSourceLineCount;
+static char** gaussianFragColumnSource;
+static int gaussianFragColumnSourceLineCount;
 
 static nv::Image*
 gaussianLoadImageFromFile(const char* file)
@@ -62,8 +86,6 @@ gaussianLoadImageFromFile(const char* file)
 
   return image.release();
 }
-
-static std::unique_ptr<nv::Image> g_image;
 /* report GL errors, if any, to stderr */
 void
 checkError(const char* functionName)
@@ -110,8 +132,8 @@ compileAndCheck(GLuint shader)
   }
 }
 
-GLuint
-compileShaderSource(GLenum type, GLsizei count, const char** string)
+static GLuint
+compileShaderSource(GLenum type, GLsizei count, char const** string)
 {
   GLuint shader = glCreateShader(type);
   glShaderSource(shader, count, string, NULL);
@@ -150,31 +172,103 @@ createProgram(GLuint vertexShader, GLuint fragmentShader)
   return program;
 }
 
-static GLint vPositionIndex;
-static GLint uTexture;
-static GLint uScreenGeometry;
+static void
+gaussianLoadWorker(const char* name, char*** ppfragmentShaderSource,
+                   int* lineCount)
+{
+  FILE* f;
+  struct stat mystat;
+  char** myfragmentShaderSource;
+  char lineBuffer[256];
+  char* line;
+  int maxlinecount, currentlinecount;
+
+  f = fopen(name, "r");
+  if (!f) {
+    fprintf(stderr, "fails to open etc1frag.glsl.\n");
+    exit(1);
+  }
+  if (0 != stat(name, &mystat)) {
+    perror("fails to get stat");
+    exit(1);
+  }
+  maxlinecount = 16;
+  myfragmentShaderSource =
+    static_cast<char**>(malloc(maxlinecount * sizeof(char*)));
+  if (!myfragmentShaderSource) {
+    perror("fails to malloc ppfragmentShaderSource:");
+    exit(1);
+  }
+  currentlinecount = 0;
+  while (line = fgets(lineBuffer, 256, f)) {
+    char* storeline = strdup(line);
+    if (maxlinecount == currentlinecount) {
+      myfragmentShaderSource = static_cast<char**>(
+        realloc(myfragmentShaderSource, maxlinecount * 2 * sizeof(char*)));
+      if (!myfragmentShaderSource) {
+        fprintf(stderr, "fails to realloc ppfragmentShaderSource to: %d",
+                maxlinecount * 2);
+        exit(1);
+      }
+      maxlinecount *= 2;
+    }
+    myfragmentShaderSource[currentlinecount++] = storeline;
+  }
+  *lineCount = currentlinecount;
+  fclose(f);
+  *ppfragmentShaderSource = myfragmentShaderSource;
+}
+
+static void
+loadGaussianFragProg(void)
+{
+  gaussianLoadWorker("gaussian-row.glsl", &gaussianFragRowSource,
+                     &gaussianFragRowSourceLineCount);
+  gaussianLoadWorker("gaussian-column.glsl", &gaussianFragColumnSource,
+                     &gaussianFragColumnSourceLineCount);
+}
 
 static void
 initShader(void)
 {
+  loadGaussianFragProg();
   const GLsizei vertexShaderLines = sizeof(vertexShaderSource) / sizeof(char*);
   GLuint vertexShader = compileShaderSource(GL_VERTEX_SHADER, vertexShaderLines,
                                             vertexShaderSource);
 
   const GLsizei fragmentShaderLines =
     sizeof(fragmentShaderSource) / sizeof(char*);
-  GLuint fragmentShader = compileShaderSource(
-    GL_FRAGMENT_SHADER, fragmentShaderLines, fragmentShaderSource);
+  GLuint fragmentRowShader =
+    compileShaderSource(GL_FRAGMENT_SHADER, gaussianFragRowSourceLineCount,
+                        const_cast<const char**>(gaussianFragRowSource));
 
-  GLuint program = createProgram(vertexShader, fragmentShader);
+  GLuint fragmentColumnShader =
+    compileShaderSource(GL_FRAGMENT_SHADER, gaussianFragColumnSourceLineCount,
+                        const_cast<const char**>(gaussianFragColumnSource));
 
-  glUseProgram(program);
-  vPositionIndex = glGetAttribLocation(program, "v_position");
-  printf("vPositionIndex: %d.\n", vPositionIndex);
-  uTexture = glGetUniformLocation(program, "u_texture");
-  uScreenGeometry = glGetUniformLocation(program, "u_screenGeometry");
-  printf("uTexture: %d, uScreenGeometry: %d.\n", uTexture, uScreenGeometry);
+  g_programRow = createProgram(vertexShader, fragmentRowShader);
+  g_programColumn = createProgram(vertexShader, fragmentColumnShader);
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentRowShader);
+  glDeleteShader(fragmentColumnShader);
+  GLint program = g_programRow;
+  vPositionIndexRow = glGetAttribLocation(program, "v_position");
+  printf("vPositionIndexRow: %d.\n", vPositionIndexRow);
+  uTextureRow = glGetUniformLocation(program, "u_texture");
+  uScreenGeometryRow = glGetUniformLocation(program, "u_screenGeometry");
+  uKernelRow = glGetUniformLocation(program, "u_kernel");
+  printf("uTextureRow: %d, uScreenGeometryRow: %d, uKernelRow: %d.\n",
+         uTextureRow, uScreenGeometryRow, uKernelRow);
 
+  program = g_programColumn;
+
+  vPositionIndexColumn = glGetAttribLocation(program, "v_position");
+  printf("vPositionIndexColumn: %d.\n", vPositionIndexColumn);
+  uTextureColumn = glGetUniformLocation(program, "u_texture");
+  uScreenGeometryColumn = glGetUniformLocation(program, "u_screenGeometry");
+  uKernelColumn = glGetUniformLocation(program, "u_kernel");
+  printf("uTextureColumn: %d, uScreenGeometryColumn: %d, uKernelColumn: %d.\n",
+         uTextureColumn, uScreenGeometryColumn, uKernelColumn);
   checkError("initShader");
 }
 
@@ -197,6 +291,8 @@ initTexture(void)
                image->getLevel(0));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 }
 
 void
@@ -227,34 +323,101 @@ dumpInfo(void)
   checkError("dumpInfo");
 }
 
-const GLvoid*
-bufferObjectPtr(GLsizei index)
+std::vector<GLfloat>
+getGaussianKernel(int n)
 {
-  return (const GLvoid*)(((char*)NULL) + index);
-}
+  std::vector<GLfloat> kernel(n);
+  float* cf = const_cast<float*>(kernel.data());
 
-GLfloat projectionMatrix[16];
+  double sigmaX = ((n - 1) * 0.5 - 1) * 0.3 + 0.8;
+  double scale2X = -0.5 / (sigmaX * sigmaX);
+  double sum = 0;
+
+  int i;
+  for (i = 0; i < n; i++) {
+    double x = i - (n - 1) * 0.5;
+    double t = std::exp(scale2X * x * x);
+    {
+      cf[i] = (float)t;
+      sum += cf[i];
+    }
+  }
+
+  sum = 1. / sum;
+  for (i = 0; i < n; i++) {
+    cf[i] = (float)(cf[i] * sum);
+  }
+
+  return kernel;
+}
 
 static void
 triangle_normal(void)
 {
+  static const GLint s_block_size = 91;
   float positions[][4] = {
     { -1.0, 1.0, 0.0, 1.0 },
     { -1.0, -1.0, 0.0, 1.0 },
     { 1.0, 1.0, 0.0, 1.0 },
     { 1.0, -1.0, 0.0, 1.0 },
   };
-  GLint viewport[4];
-  glVertexAttribPointer(vPositionIndex, 4, GL_FLOAT, GL_FALSE, 0, positions);
-  glEnableVertexAttribArray(vPositionIndex);
+  GLuint tmpFramebuffer;
+  GLuint tmpTexture;
+  std::vector<GLfloat> kernel(std::move(getGaussianKernel(s_block_size)));
+  // allocate fbo and a texture
+  glGenFramebuffers(1, &tmpFramebuffer);
+  glGenTextures(1, &tmpTexture);
+  glBindTexture(GL_TEXTURE_2D, tmpTexture);
+  nv::Image* image = g_image.get();
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->getWidth(), image->getHeight(),
+               0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+  // bind fbo and complete it.
+  glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         tmpTexture, 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
+    fprintf(stderr, "fbo is not completed.\n");
+    exit(1);
+  }
+  GLint imageGeometry[2] = { g_image->getWidth(), g_image->getHeight() };
+  glVertexAttribPointer(vPositionIndexRow, 4, GL_FLOAT, GL_FALSE, 0, positions);
+  glEnableVertexAttribArray(vPositionIndexRow);
   // setup uniforms
-  glGetIntegerv(GL_VIEWPORT, viewport);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, g_texture);
-  glUniform1i(uTexture, 0);
-  glUniform2iv(uScreenGeometry, 1, &viewport[2]);
+  glUseProgram(g_programRow);
+  glUniform1i(uTextureRow, 0);
+
+  glUniform2iv(uScreenGeometryRow, 1, imageGeometry);
+  // setup kernel and block size
+
+  glUniform1fv(uKernelRow, s_block_size, kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glDisableVertexAttribArray(vPositionIndex);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDeleteFramebuffers(1, &tmpFramebuffer);
+  glDisableVertexAttribArray(vPositionIndexRow);
+
+  glVertexAttribPointer(vPositionIndexColumn, 4, GL_FLOAT, GL_FALSE, 0,
+                        positions);
+  glEnableVertexAttribArray(vPositionIndexColumn);
+  // setup uniforms
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, tmpTexture);
+  glUseProgram(g_programColumn);
+  glUniform1i(uTextureColumn, 0);
+
+  glUniform2iv(uScreenGeometryColumn, 1, imageGeometry);
+  // setup kernel and block size
+
+  glUniform1fv(uKernelColumn, s_block_size, kernel.data());
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDisableVertexAttribArray(vPositionIndexColumn);
+  glDeleteTextures(1, &tmpTexture);
 }
 
 static void
