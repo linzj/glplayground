@@ -75,6 +75,8 @@ static int gaussianFragRowSourceLineCount;
 static char** gaussianFragColumnSource;
 static int gaussianFragColumnSourceLineCount;
 
+static const GLint g_block_size = 91;
+
 static nv::Image*
 gaussianLoadImageFromFile(const char* file)
 {
@@ -354,7 +356,6 @@ getGaussianKernel(int n)
 static void
 triangle_normal(void)
 {
-  static const GLint s_block_size = 91;
   float positions[][4] = {
     { -1.0, 1.0, 0.0, 1.0 },
     { -1.0, -1.0, 0.0, 1.0 },
@@ -363,7 +364,7 @@ triangle_normal(void)
   };
   GLuint tmpFramebuffer;
   GLuint tmpTexture;
-  std::vector<GLfloat> kernel(std::move(getGaussianKernel(s_block_size)));
+  std::vector<GLfloat> kernel(std::move(getGaussianKernel(g_block_size)));
   // allocate fbo and a texture
   glGenFramebuffers(1, &tmpFramebuffer);
   glGenTextures(1, &tmpTexture);
@@ -395,7 +396,7 @@ triangle_normal(void)
   glUniform2iv(uScreenGeometryRow, 1, imageGeometry);
   // setup kernel and block size
 
-  glUniform1fv(uKernelRow, s_block_size, kernel.data());
+  glUniform1fv(uKernelRow, g_block_size, kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDeleteFramebuffers(1, &tmpFramebuffer);
@@ -413,9 +414,8 @@ triangle_normal(void)
   glUniform2iv(uScreenGeometryColumn, 1, imageGeometry);
   // setup kernel and block size
 
-  glUniform1fv(uKernelColumn, s_block_size, kernel.data());
+  glUniform1fv(uKernelColumn, g_block_size, kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDisableVertexAttribArray(vPositionIndexColumn);
   glDeleteTextures(1, &tmpTexture);
 }
@@ -469,7 +469,7 @@ main(int argc, char** argv)
     fprintf(stderr, "fails to load image.\n");
     exit(1);
   }
-  glutInitWindowSize(500, 500);
+  glutInitWindowSize(g_image->getWidth(), g_image->getHeight());
   glutInitWindowPosition(100, 100);
   glutCreateWindow(argv[0]);
   dumpInfo();
