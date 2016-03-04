@@ -423,10 +423,14 @@ triangle_normal(void)
 static void
 display(void)
 {
+  int t1, t2;
+  t1 = glutGet(GLUT_ELAPSED_TIME);
   glClear(GL_COLOR_BUFFER_BIT);
   triangle_normal();
-  glFlush();
+  glFinish();
   checkError("display");
+  t2 = glutGet(GLUT_ELAPSED_TIME);
+  printf("used %d millseconds.\n", t2 - t1);
 }
 
 static void
