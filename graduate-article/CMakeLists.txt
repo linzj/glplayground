@@ -1,8 +1,8 @@
 CMAKE_MINIMUM_REQUIRED( VERSION 3.0 )
 
-ADD_DEFINITIONS( -DFREEGLUT_STATIC=1 -DGLEW_STATIC=1 )
-FILE( GLOB SOURCES *.c* *.h* Scene/*.h* Scene/*.c* Scene/SceneImpl/*.c* Scene/SceneImpl/*.h* Scene/src/*.c* nvImage/src/*.c* nvImage/src/*.h* nvModel/include/*.h nvModel/src/*.c*)
-INCLUDE_DIRECTORIES(../freeglut-3.0.0/include nvImage/include/ nvModel/include/ )
+ADD_DEFINITIONS( -DFREEGLUT_STATIC=1 )
+FILE( GLOB SOURCES *.c* *.h* Scene/*.h* Scene/*.c* Scene/SceneImpl/*.c* Scene/SceneImpl/*.h* Scene/src/*.c* )
+INCLUDE_DIRECTORIES(../freeglut-3.0.0/include )
 
 IF( WIN32 )
 
@@ -29,16 +29,13 @@ ELSEIF( UNIX )
     endif(NOT OPENGL_FOUND)
 
     SET(PLATFORM_LIBS pthread)
-    SET(CMAKE_C_FLAGS "-O2 -ggdb")
-    SET(CMAKE_CXX_FLAGS "-O2 -ggdb -std=c++11")
     FILE ( GLOB PLATFORM_SOURCES Scene/src/linux/*.c* )
     SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
-    SET(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "-static-libgcc")
+    SET(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
 
 ENDIF()
-
 
 ADD_EXECUTABLE( oit ${CONSOLE_SYSTEM} ${SOURCES} ${PLATFORM_SOURCES} )
 TARGET_LINK_LIBRARIES( oit PUBLIC ${PLATFORM_LIBS} )
 TARGET_INCLUDE_DIRECTORIES( oit PRIVATE Scene )
-TARGET_LINK_LIBRARIES( oit PUBLIC freeglut_static glew )
+TARGET_LINK_LIBRARIES( oit PUBLIC freeglut_static glew nvlib )

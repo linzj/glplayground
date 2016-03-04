@@ -29,7 +29,7 @@ namespace nv {
 
 Image::FormatInfo Image::formatTable[] = {
     // temporally disable
-    // { "png", Image::readPng, Image::writePng},
+    { "png", Image::readPng, Image::writePng},
     { "dds", Image::readDDS, 0},
     { "hdr", Image::readHdr, 0}
 };
