@@ -61,6 +61,8 @@
 #include <time.h>
 #endif
 
+#define ENABLE_THRESHOLD_TEST 0
+
 static std::unique_ptr<nv::Image> g_image;
 static std::vector<GLfloat> g_kernel;
 
@@ -81,6 +83,20 @@ static int gaussianFragRowSourceLineCount;
 static char** gaussianFragColumnSource;
 static int gaussianFragColumnSourceLineCount;
 
+static GLint vPositionIndexRender;
+static GLint uTextureRender;
+static GLint uScreenGeometryRender;
+static GLint g_programRender;
+
+#ifdef ENABLE_THRESHOLD_TEST
+static char** thresholdSource;
+static int thresholdSourceLine;
+static GLint vPositionIndexThreshold;
+static GLint uTextureOrigThreshold;
+static GLint uTextureBlurThreshold;
+static GLint uScreenGeometryThreshold;
+static GLint g_programThreshold;
+#endif // ENABLE_THRESHOLD_TEST
 static const GLint g_block_size = 91;
 
 static std::vector<GLfloat> getGaussianKernel(int n);
@@ -255,12 +271,16 @@ initShader(void)
   GLuint fragmentColumnShader =
     compileShaderSource(GL_FRAGMENT_SHADER, gaussianFragColumnSourceLineCount,
                         const_cast<const char**>(gaussianFragColumnSource));
+  GLuint fragmentRender = compileShaderSource(
+    GL_FRAGMENT_SHADER, fragmentShaderLines, fragmentShaderSource);
 
   g_programRow = createProgram(vertexShader, fragmentRowShader);
   g_programColumn = createProgram(vertexShader, fragmentColumnShader);
+  g_programRender = createProgram(vertexShader, fragmentRender);
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentRowShader);
   glDeleteShader(fragmentColumnShader);
+  glDeleteShader(fragmentRender);
   GLint program = g_programRow;
   vPositionIndexRow = glGetAttribLocation(program, "v_position");
   printf("vPositionIndexRow: %d.\n", vPositionIndexRow);
@@ -279,6 +299,15 @@ initShader(void)
   uKernelColumn = glGetUniformLocation(program, "u_kernel");
   printf("uTextureColumn: %d, uScreenGeometryColumn: %d, uKernelColumn: %d.\n",
          uTextureColumn, uScreenGeometryColumn, uKernelColumn);
+
+  program = g_programRender;
+
+  vPositionIndexRender = glGetAttribLocation(program, "v_position");
+  printf("vPositionIndexRender: %d.\n", vPositionIndexRender);
+  uTextureRender = glGetUniformLocation(program, "u_texture");
+  uScreenGeometryRender = glGetUniformLocation(program, "u_screenGeometry");
+  printf("uTextureRender: %d, uScreenGeometryRender: %d.\n", uTextureRender,
+         uScreenGeometryRender);
   checkError("initShader");
 }
 
@@ -363,6 +392,19 @@ getGaussianKernel(int n)
 }
 
 static void
+allocateTexture(GLuint texture, GLint width, GLint height, GLint iformat,
+                GLint format)
+{
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, iformat, width, height, 0, format,
+               GL_UNSIGNED_BYTE, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
+static void
 triangle_normal(void)
 {
   float positions[][4] = {
@@ -372,22 +414,19 @@ triangle_normal(void)
     { 1.0, -1.0, 0.0, 1.0 },
   };
   GLuint tmpFramebuffer;
-  GLuint tmpTexture;
+  GLuint tmpTexture[2];
+  nv::Image* image = g_image.get();
   // allocate fbo and a texture
   glGenFramebuffers(1, &tmpFramebuffer);
-  glGenTextures(1, &tmpTexture);
-  glBindTexture(GL_TEXTURE_2D, tmpTexture);
-  nv::Image* image = g_image.get();
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image->getWidth(), image->getHeight(),
-               0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+  glGenTextures(2, tmpTexture);
+  allocateTexture(tmpTexture[0], image->getWidth(), image->getHeight(), GL_RGB,
+                  GL_RGB);
+  allocateTexture(tmpTexture[1], image->getWidth(), image->getHeight(), GL_RGB,
+                  GL_RGB);
   // bind fbo and complete it.
   glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         tmpTexture, 0);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                         tmpTexture[0], 0);
   if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
     fprintf(stderr, "fbo is not completed.\n");
     exit(1);
@@ -406,8 +445,14 @@ triangle_normal(void)
 
   glUniform1fv(uKernelRow, g_block_size, g_kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glDeleteFramebuffers(1, &tmpFramebuffer);
+  // bind fbo and complete it.
+  glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         tmpTexture[1], 0);
+  if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
+    fprintf(stderr, "fbo is not completed.\n");
+    exit(1);
+  }
   glDisableVertexAttribArray(vPositionIndexRow);
 
   glVertexAttribPointer(vPositionIndexColumn, 4, GL_FLOAT, GL_FALSE, 0,
@@ -415,7 +460,7 @@ triangle_normal(void)
   glEnableVertexAttribArray(vPositionIndexColumn);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, tmpTexture);
+  glBindTexture(GL_TEXTURE_2D, tmpTexture[0]);
   glUseProgram(g_programColumn);
   glUniform1i(uTextureColumn, 0);
 
@@ -425,7 +470,22 @@ triangle_normal(void)
   glUniform1fv(uKernelColumn, g_block_size, g_kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glDisableVertexAttribArray(vPositionIndexColumn);
-  glDeleteTextures(1, &tmpTexture);
+  // render to screen
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  glEnableVertexAttribArray(vPositionIndexRender);
+  // setup uniforms
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, tmpTexture[1]);
+  glUseProgram(g_programRender);
+  glUniform1i(uTextureRender, 0);
+
+  glUniform2iv(uScreenGeometryRender, 1, imageGeometry);
+
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glDisableVertexAttribArray(vPositionIndexRender);
+  glDeleteTextures(2, tmpTexture);
+  glDeleteFramebuffers(1, &tmpFramebuffer);
 }
 
 static void
