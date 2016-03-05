@@ -55,6 +55,11 @@
 #include <memory>
 #include <cmath>
 #include <vector>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <time.h>
+#endif
 
 static std::unique_ptr<nv::Image> g_image;
 static std::vector<GLfloat> g_kernel;
@@ -426,14 +431,27 @@ triangle_normal(void)
 static void
 display(void)
 {
-  int t1, t2;
-  t1 = glutGet(GLUT_ELAPSED_TIME);
+#ifdef _WIN32
+  LARGE_INTEGER t1, t2, freq;
+  QueryPerformanceCounter(&t1);
+#else
+  struct timespec t1, t2;
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+#endif
   glClear(GL_COLOR_BUFFER_BIT);
   triangle_normal();
   glutSwapBuffers();
   checkError("display");
-  t2 = glutGet(GLUT_ELAPSED_TIME);
-  printf("used %d millseconds.\n", t2 - t1);
+#ifdef _WIN32
+  QueryPerformanceCounter(&t2);
+  QueryPerformanceFrequency(&freq);
+  printf("one frame: %lf.\n",
+         (double)(t2.QuadPart - t1.QuadPart) / freq.QuadPart);
+#else
+  clock_gettime(CLOCK_MONOTONIC, &t2);
+  printf("one frame: %lf.\n", ((double)(t2.tv_sec - t1.tv_sec) +
+                               ((double)(t2.tv_nsec - t1.tv_nsec) / 1e9)));
+#endif
 }
 
 static void
