@@ -430,7 +430,7 @@ display(void)
   t1 = glutGet(GLUT_ELAPSED_TIME);
   glClear(GL_COLOR_BUFFER_BIT);
   triangle_normal();
-  glFinish();
+  glutSwapBuffers();
   checkError("display");
   t2 = glutGet(GLUT_ELAPSED_TIME);
   printf("used %d millseconds.\n", t2 - t1);
@@ -466,7 +466,7 @@ main(int argc, char** argv)
 {
   int menuA;
   glutInit(&argc, argv);
-  glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
   if (argc != 2) {
     fprintf(stderr, "need a file name.\n");
     exit(1);
