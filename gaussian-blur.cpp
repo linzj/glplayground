@@ -63,6 +63,12 @@
 
 #define ENABLE_THRESHOLD_TEST 0
 
+struct ImageDesc
+{
+  GLint width, height;
+  GLenum format;
+};
+
 static std::unique_ptr<nv::Image> g_image;
 static std::vector<GLfloat> g_kernel;
 
@@ -392,11 +398,10 @@ getGaussianKernel(int n)
 }
 
 static void
-allocateTexture(GLuint texture, GLint width, GLint height, GLint iformat,
-                GLint format)
+allocateTexture(GLuint texture, GLint width, GLint height, GLenum format)
 {
   glBindTexture(GL_TEXTURE_2D, texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, iformat, width, height, 0, format,
+  glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
                GL_UNSIGNED_BYTE, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -405,9 +410,9 @@ allocateTexture(GLuint texture, GLint width, GLint height, GLint iformat,
 }
 
 static void
-triangle_normal(void)
+renderBlur(const ImageDesc& imgDesc)
 {
-  float positions[][4] = {
+  static float positions[][4] = {
     { -1.0, 1.0, 0.0, 1.0 },
     { -1.0, -1.0, 0.0, 1.0 },
     { 1.0, 1.0, 0.0, 1.0 },
@@ -415,14 +420,11 @@ triangle_normal(void)
   };
   GLuint tmpFramebuffer;
   GLuint tmpTexture[2];
-  nv::Image* image = g_image.get();
   // allocate fbo and a texture
   glGenFramebuffers(1, &tmpFramebuffer);
   glGenTextures(2, tmpTexture);
-  allocateTexture(tmpTexture[0], image->getWidth(), image->getHeight(), GL_RGB,
-                  GL_RGB);
-  allocateTexture(tmpTexture[1], image->getWidth(), image->getHeight(), GL_RGB,
-                  GL_RGB);
+  allocateTexture(tmpTexture[0], imgDesc.width, imgDesc.height, imgDesc.format);
+  allocateTexture(tmpTexture[1], imgDesc.width, imgDesc.height, imgDesc.format);
   // bind fbo and complete it.
   glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -431,7 +433,7 @@ triangle_normal(void)
     fprintf(stderr, "fbo is not completed.\n");
     exit(1);
   }
-  GLint imageGeometry[2] = { g_image->getWidth(), g_image->getHeight() };
+  GLint imageGeometry[2] = { imgDesc.width, imgDesc.height };
   glVertexAttribPointer(vPositionIndexRow, 4, GL_FLOAT, GL_FALSE, 0, positions);
   glEnableVertexAttribArray(vPositionIndexRow);
   // setup uniforms
@@ -486,6 +488,14 @@ triangle_normal(void)
   glDisableVertexAttribArray(vPositionIndexRender);
   glDeleteTextures(2, tmpTexture);
   glDeleteFramebuffers(1, &tmpFramebuffer);
+}
+
+static void
+triangle_normal(void)
+{
+  ImageDesc desc = { g_image->getWidth(), g_image->getHeight(),
+                     g_image->getFormat() };
+  renderBlur(desc);
 }
 
 static void
