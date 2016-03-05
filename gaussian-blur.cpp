@@ -57,6 +57,7 @@
 #include <vector>
 
 static std::unique_ptr<nv::Image> g_image;
+static std::vector<GLfloat> g_kernel;
 
 static GLint vPositionIndexRow;
 static GLint uTextureRow;
@@ -76,6 +77,8 @@ static char** gaussianFragColumnSource;
 static int gaussianFragColumnSourceLineCount;
 
 static const GLint g_block_size = 91;
+
+static std::vector<GLfloat> getGaussianKernel(int n);
 
 static nv::Image*
 gaussianLoadImageFromFile(const char* file)
@@ -313,6 +316,7 @@ init(void)
   initTexture();
   initShader();
   initRendering();
+  g_kernel = std::move(getGaussianKernel(g_block_size));
 }
 
 void
@@ -325,7 +329,7 @@ dumpInfo(void)
   checkError("dumpInfo");
 }
 
-std::vector<GLfloat>
+static std::vector<GLfloat>
 getGaussianKernel(int n)
 {
   std::vector<GLfloat> kernel(n);
@@ -364,7 +368,6 @@ triangle_normal(void)
   };
   GLuint tmpFramebuffer;
   GLuint tmpTexture;
-  std::vector<GLfloat> kernel(std::move(getGaussianKernel(g_block_size)));
   // allocate fbo and a texture
   glGenFramebuffers(1, &tmpFramebuffer);
   glGenTextures(1, &tmpTexture);
@@ -396,7 +399,7 @@ triangle_normal(void)
   glUniform2iv(uScreenGeometryRow, 1, imageGeometry);
   // setup kernel and block size
 
-  glUniform1fv(uKernelRow, g_block_size, kernel.data());
+  glUniform1fv(uKernelRow, g_block_size, g_kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDeleteFramebuffers(1, &tmpFramebuffer);
@@ -414,7 +417,7 @@ triangle_normal(void)
   glUniform2iv(uScreenGeometryColumn, 1, imageGeometry);
   // setup kernel and block size
 
-  glUniform1fv(uKernelColumn, g_block_size, kernel.data());
+  glUniform1fv(uKernelColumn, g_block_size, g_kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glDisableVertexAttribArray(vPositionIndexColumn);
   glDeleteTextures(1, &tmpTexture);
