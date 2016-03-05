@@ -370,8 +370,8 @@ triangle_normal(void)
   glGenTextures(1, &tmpTexture);
   glBindTexture(GL_TEXTURE_2D, tmpTexture);
   nv::Image* image = g_image.get();
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->getWidth(), image->getHeight(),
-               0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image->getWidth(), image->getHeight(),
+               0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
   // bind fbo and complete it.
   glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
