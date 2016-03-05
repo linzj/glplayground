@@ -84,24 +84,23 @@ static GLint uScreenGeometryColumn;
 static GLint uKernelColumn;
 static GLint g_programColumn;
 
-static char** gaussianFragRowSource;
-static int gaussianFragRowSourceLineCount;
-static char** gaussianFragColumnSource;
-static int gaussianFragColumnSourceLineCount;
+static char* gaussianFragRowSource;
+static char* gaussianFragColumnSource;
 
 static GLint vPositionIndexRender;
 static GLint uTextureRender;
 static GLint uScreenGeometryRender;
 static GLint g_programRender;
 
-#ifdef ENABLE_THRESHOLD_TEST
-static char** thresholdSource;
-static int thresholdSourceLine;
+#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
+static char* thresholdFragSource;
 static GLint vPositionIndexThreshold;
 static GLint uTextureOrigThreshold;
 static GLint uTextureBlurThreshold;
 static GLint uScreenGeometryThreshold;
+static GLint uMaxValueThreshold;
 static GLint g_programThreshold;
+static const int g_maxVal = 211;
 #endif // ENABLE_THRESHOLD_TEST
 static const GLint g_block_size = 91;
 
@@ -205,8 +204,7 @@ createProgram(GLuint vertexShader, GLuint fragmentShader)
 }
 
 static void
-gaussianLoadWorker(const char* name, char*** ppfragmentShaderSource,
-                   int* lineCount)
+gaussianLoadWorker(const char* name, char** pfragmentShaderSource)
 {
   FILE* f;
   struct stat mystat;
@@ -224,40 +222,21 @@ gaussianLoadWorker(const char* name, char*** ppfragmentShaderSource,
     perror("fails to get stat");
     exit(1);
   }
-  maxlinecount = 16;
-  myfragmentShaderSource =
-    static_cast<char**>(malloc(maxlinecount * sizeof(char*)));
-  if (!myfragmentShaderSource) {
-    perror("fails to malloc ppfragmentShaderSource:");
-    exit(1);
-  }
-  currentlinecount = 0;
-  while (line = fgets(lineBuffer, 256, f)) {
-    char* storeline = strdup(line);
-    if (maxlinecount == currentlinecount) {
-      myfragmentShaderSource = static_cast<char**>(
-        realloc(myfragmentShaderSource, maxlinecount * 2 * sizeof(char*)));
-      if (!myfragmentShaderSource) {
-        fprintf(stderr, "fails to realloc ppfragmentShaderSource to: %d",
-                maxlinecount * 2);
-        exit(1);
-      }
-      maxlinecount *= 2;
-    }
-    myfragmentShaderSource[currentlinecount++] = storeline;
-  }
-  *lineCount = currentlinecount;
+  char* buf = static_cast<char*>(malloc(mystat.st_size + 1));
+  fread(buf, 1, mystat.st_size, f);
   fclose(f);
-  *ppfragmentShaderSource = myfragmentShaderSource;
+  buf[mystat.st_size] = '\0';
+  *pfragmentShaderSource = buf;
 }
 
 static void
 loadGaussianFragProg(void)
 {
-  gaussianLoadWorker("gaussian-row.glsl", &gaussianFragRowSource,
-                     &gaussianFragRowSourceLineCount);
-  gaussianLoadWorker("gaussian-column.glsl", &gaussianFragColumnSource,
-                     &gaussianFragColumnSourceLineCount);
+  gaussianLoadWorker("gaussian-row.glsl", &gaussianFragRowSource);
+  gaussianLoadWorker("gaussian-column.glsl", &gaussianFragColumnSource);
+#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
+  gaussianLoadWorker("threshold.glsl", &thresholdFragSource);
+#endif // ENABLE_THRESHOLD_TEST
 }
 
 static void
@@ -270,23 +249,17 @@ initShader(void)
 
   const GLsizei fragmentShaderLines =
     sizeof(fragmentShaderSource) / sizeof(char*);
-  GLuint fragmentRowShader =
-    compileShaderSource(GL_FRAGMENT_SHADER, gaussianFragRowSourceLineCount,
-                        const_cast<const char**>(gaussianFragRowSource));
+  GLuint fragmentRowShader = compileShaderSource(
+    GL_FRAGMENT_SHADER, 1, const_cast<const char**>(&gaussianFragRowSource));
 
-  GLuint fragmentColumnShader =
-    compileShaderSource(GL_FRAGMENT_SHADER, gaussianFragColumnSourceLineCount,
-                        const_cast<const char**>(gaussianFragColumnSource));
+  GLuint fragmentColumnShader = compileShaderSource(
+    GL_FRAGMENT_SHADER, 1, const_cast<const char**>(&gaussianFragColumnSource));
   GLuint fragmentRender = compileShaderSource(
     GL_FRAGMENT_SHADER, fragmentShaderLines, fragmentShaderSource);
 
   g_programRow = createProgram(vertexShader, fragmentRowShader);
   g_programColumn = createProgram(vertexShader, fragmentColumnShader);
   g_programRender = createProgram(vertexShader, fragmentRender);
-  glDeleteShader(vertexShader);
-  glDeleteShader(fragmentRowShader);
-  glDeleteShader(fragmentColumnShader);
-  glDeleteShader(fragmentRender);
   GLint program = g_programRow;
   vPositionIndexRow = glGetAttribLocation(program, "v_position");
   printf("vPositionIndexRow: %d.\n", vPositionIndexRow);
@@ -314,6 +287,29 @@ initShader(void)
   uScreenGeometryRender = glGetUniformLocation(program, "u_screenGeometry");
   printf("uTextureRender: %d, uScreenGeometryRender: %d.\n", uTextureRender,
          uScreenGeometryRender);
+#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
+  GLuint fragmentThreshold = compileShaderSource(
+    GL_FRAGMENT_SHADER, 1, const_cast<const char**>(&thresholdFragSource));
+  g_programThreshold = createProgram(vertexShader, fragmentThreshold);
+  glDeleteShader(fragmentThreshold);
+  program = g_programThreshold;
+
+  vPositionIndexThreshold = glGetAttribLocation(program, "v_position");
+  printf("vPositionIndexThreshold: %d.\n", vPositionIndexThreshold);
+  uTextureOrigThreshold = glGetUniformLocation(program, "u_textureOrig");
+  uTextureBlurThreshold = glGetUniformLocation(program, "u_textureBlur");
+  uScreenGeometryThreshold = glGetUniformLocation(program, "u_screenGeometry");
+  uMaxValueThreshold = glGetUniformLocation(program, "u_maxValue");
+  printf("uTextureOrigThreshold: %d, uTextureBlurThreshold: %d, "
+         "uScreenGeometryRender: %d, uMaxValueThreshold: %d.\n",
+         uTextureOrigThreshold, uTextureBlurThreshold, uScreenGeometryThreshold,
+         uMaxValueThreshold);
+#endif // ENABLE_THRESHOLD_TEST
+  // clean up
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentRowShader);
+  glDeleteShader(fragmentColumnShader);
+  glDeleteShader(fragmentRender);
   checkError("initShader");
 }
 
@@ -350,7 +346,7 @@ init(void)
     exit(1);
   }
   if (!GLEW_VERSION_2_0) {
-    fprintf(stderr, "OpenGL 3.3 fails");
+    fprintf(stderr, "OpenGL 2.0 fails");
     exit(1);
   }
   initTexture();
@@ -436,10 +432,10 @@ renderBlur(const ImageDesc& imgDesc)
   GLint imageGeometry[2] = { imgDesc.width, imgDesc.height };
   glVertexAttribPointer(vPositionIndexRow, 4, GL_FLOAT, GL_FALSE, 0, positions);
   glEnableVertexAttribArray(vPositionIndexRow);
+  glUseProgram(g_programRow);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, g_texture);
-  glUseProgram(g_programRow);
   glUniform1i(uTextureRow, 0);
 
   glUniform2iv(uScreenGeometryRow, 1, imageGeometry);
@@ -460,10 +456,10 @@ renderBlur(const ImageDesc& imgDesc)
   glVertexAttribPointer(vPositionIndexColumn, 4, GL_FLOAT, GL_FALSE, 0,
                         positions);
   glEnableVertexAttribArray(vPositionIndexColumn);
+  glUseProgram(g_programColumn);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tmpTexture[0]);
-  glUseProgram(g_programColumn);
   glUniform1i(uTextureColumn, 0);
 
   glUniform2iv(uScreenGeometryColumn, 1, imageGeometry);
@@ -476,16 +472,34 @@ renderBlur(const ImageDesc& imgDesc)
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   glEnableVertexAttribArray(vPositionIndexRender);
+  glUseProgram(g_programRender);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tmpTexture[1]);
-  glUseProgram(g_programRender);
   glUniform1i(uTextureRender, 0);
 
   glUniform2iv(uScreenGeometryRender, 1, imageGeometry);
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glDisableVertexAttribArray(vPositionIndexRender);
+#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
+  glEnableVertexAttribArray(vPositionIndexThreshold);
+  glUseProgram(g_programThreshold);
+  // setup uniforms
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, g_texture);
+  glUniform1i(uTextureOrigThreshold, 0);
+  glActiveTexture(GL_TEXTURE0 + 1);
+  glBindTexture(GL_TEXTURE_2D, tmpTexture[1]);
+  glUniform1i(uTextureBlurThreshold, 1);
+
+  glUniform2iv(uScreenGeometryThreshold, 1, imageGeometry);
+  glUniform1f(uMaxValueThreshold, static_cast<float>(g_maxVal) / 255.0f);
+
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glDisableVertexAttribArray(vPositionIndexThreshold);
+
+#endif // ENABLE_THRESHOLD_TEST
   glDeleteTextures(2, tmpTexture);
   glDeleteFramebuffers(1, &tmpFramebuffer);
 }
