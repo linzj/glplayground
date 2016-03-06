@@ -439,6 +439,9 @@ ImageProcessor::process(const ImageDesc& desc)
   GLuint tmpFramebuffer;
   // zero for row blur, one for column blur, two for input image.
   GLuint tmpTexture[3];
+  GLint oldViewport[4];
+  glGetIntegerv(GL_VIEWPORT, oldViewport);
+  glViewport(0, 0, desc.width, desc.height);
   // allocate fbo and a texture
   glGenFramebuffers(1, &tmpFramebuffer);
   glGenTextures(3, tmpTexture);
@@ -528,6 +531,7 @@ ImageProcessor::process(const ImageDesc& desc)
 #endif // ENABLE_THRESHOLD_TEST
   glDeleteTextures(3, tmpTexture);
   glDeleteFramebuffers(1, &tmpFramebuffer);
+  glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);
 }
 
 void
