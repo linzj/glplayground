@@ -223,7 +223,8 @@ gaussianLoadWorker(const char* name, char** pfragmentShaderSource)
     exit(1);
   }
   char* buf = static_cast<char*>(malloc(mystat.st_size + 1));
-  fread(buf, 1, mystat.st_size, f);
+  size_t readbytes = fread(buf, 1, mystat.st_size, f);
+  (void)readbytes;
   fclose(f);
   buf[mystat.st_size] = '\0';
   *pfragmentShaderSource = buf;
