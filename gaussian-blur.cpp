@@ -67,307 +67,108 @@ struct ImageDesc
 {
   GLint width, height;
   GLenum format;
+  void* data;
 };
 
 static std::unique_ptr<nv::Image> g_image;
-static std::vector<GLfloat> g_kernel;
+static const int g_maxVal = 211;
 
-static GLint vPositionIndexRow;
-static GLint uTextureRow;
-static GLint uScreenGeometryRow;
-static GLint uKernelRow;
-static GLint g_programRow;
+class ImageProcessor
+{
+public:
+    ImageProcessor();
+    ~ImageProcessor();
+    bool init(int maxValue);
+    void process(const ImageDesc& desc);
+    std::vector<GLfloat> m_kernel;
 
-static GLint vPositionIndexColumn;
-static GLint uTextureColumn;
-static GLint uScreenGeometryColumn;
-static GLint uKernelColumn;
-static GLint g_programColumn;
+    GLint m_vPositionIndexRow;
+    GLint m_uTextureRow;
+    GLint m_uScreenGeometryRow;
+    GLint m_uKernelRow;
+    GLint m_programRow;
 
-static char* gaussianFragRowSource;
-static char* gaussianFragColumnSource;
+    GLint m_vPositionIndexColumn;
+    GLint m_uTextureColumn;
+    GLint m_uScreenGeometryColumn;
+    GLint m_uKernelColumn;
+    GLint m_programColumn;
 
-static GLint vPositionIndexRender;
-static GLint uTextureRender;
-static GLint uScreenGeometryRender;
-static GLint g_programRender;
+    GLint m_vPositionIndexRender;
+    GLint m_uTextureRender;
+    GLint m_uScreenGeometryRender;
+    GLint m_programRender;
+    GLint m_maxValue;
 
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-static char* thresholdFragSource;
-static GLint vPositionIndexThreshold;
-static GLint uTextureOrigThreshold;
-static GLint uTextureBlurThreshold;
-static GLint uScreenGeometryThreshold;
-static GLint uMaxValueThreshold;
-static GLint g_programThreshold;
-static const int g_maxVal = 211;
+    GLint m_vPositionIndexThreshold;
+    GLint m_uTextureOrigThreshold;
+    GLint m_uTextureBlurThreshold;
+    GLint m_uScreenGeometryThresholdg;
+    GLint m_uMaxValueThreshold;
+    GLint m_programThreshold;
 #endif // ENABLE_THRESHOLD_TEST
-static const GLint g_block_size = 91;
-
-static std::vector<GLfloat> getGaussianKernel(int n);
-
-static nv::Image*
-gaussianLoadImageFromFile(const char* file)
-{
-  std::unique_ptr<nv::Image> image(new nv::Image());
-
-  if (!image->loadImageFromFile(file)) {
-    return NULL;
-  }
-
-  return image.release();
-}
-/* report GL errors, if any, to stderr */
-void
-checkError(const char* functionName)
-{
-  GLenum error;
-  while ((error = glGetError()) != GL_NO_ERROR) {
-    fprintf(stderr, "GL error 0x%X detected in %s\n", error, functionName);
-  }
-}
-
-/* the name of the vertex buffer object */
-GLuint vertexBufferName;
-GLuint vertexArrayName;
-
-const char* vertexShaderSource[] = { "#version 120\n",
-                                     "attribute vec4 v_position;\n",
-                                     "void main()\n",
-                                     "{\n",
-                                     "   gl_Position = v_position;\n",
-                                     "}\n" };
-
-const char* fragmentShaderSource[] = {
-  "#version 120\n", "uniform sampler2D u_texture;\n",
-  "uniform ivec2 u_screenGeometry;\n"
-  "void main(void)\n",
-  "{\n", "   vec2 texcoord = gl_FragCoord.xy / vec2(u_screenGeometry);\n",
-  "   gl_FragColor = texture2D(u_texture, texcoord);\n", "}\n"
+private:
+    static const GLint s_block_size = 91;
+    void initGaussianBlurKernel();
+    bool initProgram();
+    void allocateTexture(GLuint texture, GLint width, GLint height, GLenum format, void* data = nullptr);
+    static std::vector<GLfloat> getGaussianKernel(int n);
 };
 
-void
-compileAndCheck(GLuint shader)
-{
-  GLint status;
-  glCompileShader(shader);
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-  if (status == GL_FALSE) {
-    GLint infoLogLength;
-    char* infoLog;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
-    infoLog = (char*)malloc(infoLogLength);
-    glGetShaderInfoLog(shader, infoLogLength, NULL, infoLog);
-    fprintf(stderr, "compile log: %s\n", infoLog);
-    free(infoLog);
-  }
-}
-
-static GLuint
-compileShaderSource(GLenum type, GLsizei count, char const** string)
-{
-  GLuint shader = glCreateShader(type);
-  glShaderSource(shader, count, string, NULL);
-  compileAndCheck(shader);
-  return shader;
-}
-
-void
-linkAndCheck(GLuint program)
-{
-  GLint status;
-  glLinkProgram(program);
-  glGetProgramiv(program, GL_LINK_STATUS, &status);
-  if (status == GL_FALSE) {
-    GLint infoLogLength;
-    char* infoLog;
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
-    infoLog = (char*)malloc(infoLogLength);
-    glGetProgramInfoLog(program, infoLogLength, NULL, infoLog);
-    fprintf(stderr, "link log: %s\n", infoLog);
-    free(infoLog);
-  }
-}
-
-GLuint
-createProgram(GLuint vertexShader, GLuint fragmentShader)
-{
-  GLuint program = glCreateProgram();
-  if (vertexShader != 0) {
-    glAttachShader(program, vertexShader);
-  }
-  if (fragmentShader != 0) {
-    glAttachShader(program, fragmentShader);
-  }
-  linkAndCheck(program);
-  return program;
-}
-
-static void
-gaussianLoadWorker(const char* name, char** pfragmentShaderSource)
-{
-  FILE* f;
-  struct stat mystat;
-  char** myfragmentShaderSource;
-  char lineBuffer[256];
-  char* line;
-  int maxlinecount, currentlinecount;
-
-  f = fopen(name, "r");
-  if (!f) {
-    fprintf(stderr, "fails to open etc1frag.glsl.\n");
-    exit(1);
-  }
-  if (0 != stat(name, &mystat)) {
-    perror("fails to get stat");
-    exit(1);
-  }
-  char* buf = static_cast<char*>(malloc(mystat.st_size + 1));
-  size_t readbytes = fread(buf, 1, mystat.st_size, f);
-  (void)readbytes;
-  fclose(f);
-  buf[mystat.st_size] = '\0';
-  *pfragmentShaderSource = buf;
-}
-
-static void
-loadGaussianFragProg(void)
-{
-  gaussianLoadWorker("gaussian-row.glsl", &gaussianFragRowSource);
-  gaussianLoadWorker("gaussian-column.glsl", &gaussianFragColumnSource);
+ImageProcessor::ImageProcessor()
+    : m_vPositionIndexRow(0)
+    , m_uTextureRow(0)
+    , m_uScreenGeometryRow(0)
+    , m_uKernelRow(0)
+    , m_programRow(0)
+    , m_vPositionIndexColumn(0)
+    , m_uTextureColumn(0)
+    , m_uScreenGeometryColumn(0)
+    , m_uKernelColumn(0)
+    , m_programColumn(0)
+    , m_vPositionIndexRender(0)
+    , m_uTextureRender(0)
+    , m_uScreenGeometryRender(0)
+    , m_programRender(0)
+     , m_maxValue(0)
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-  gaussianLoadWorker("threshold.glsl", &thresholdFragSource);
+    , m_vPositionIndexThreshold(0)
+    , m_uTextureOrigThreshold(0)
+    , m_uTextureBlurThreshold(0)
+    , m_uScreenGeometryThresholdg(0)
+    , m_uMaxValueThreshold(0)
+    , m_programThreshold(0)
+#endif // ENABLE_THRESHOLD_TEST
+{}
+
+ImageProcessor::~ImageProcessor()
+{
+    if (m_programRow) {
+        glDeleteProgram(m_programRow);
+    }
+    if (m_programColumn) {
+        glDeleteProgram(m_programColumn);
+    }
+    if (m_programRender) {
+        glDeleteProgram(m_programRender);
+    }
+#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
+    if (m_programThreshold) {
+        glDeleteProgram(m_programThreshold);
+    }
 #endif // ENABLE_THRESHOLD_TEST
 }
 
-static void
-initShader(void)
+bool ImageProcessor::init(int maxValue)
 {
-  loadGaussianFragProg();
-  const GLsizei vertexShaderLines = sizeof(vertexShaderSource) / sizeof(char*);
-  GLuint vertexShader = compileShaderSource(GL_VERTEX_SHADER, vertexShaderLines,
-                                            vertexShaderSource);
-
-  const GLsizei fragmentShaderLines =
-    sizeof(fragmentShaderSource) / sizeof(char*);
-  GLuint fragmentRowShader = compileShaderSource(
-    GL_FRAGMENT_SHADER, 1, const_cast<const char**>(&gaussianFragRowSource));
-
-  GLuint fragmentColumnShader = compileShaderSource(
-    GL_FRAGMENT_SHADER, 1, const_cast<const char**>(&gaussianFragColumnSource));
-  GLuint fragmentRender = compileShaderSource(
-    GL_FRAGMENT_SHADER, fragmentShaderLines, fragmentShaderSource);
-
-  g_programRow = createProgram(vertexShader, fragmentRowShader);
-  g_programColumn = createProgram(vertexShader, fragmentColumnShader);
-  g_programRender = createProgram(vertexShader, fragmentRender);
-  GLint program = g_programRow;
-  vPositionIndexRow = glGetAttribLocation(program, "v_position");
-  printf("vPositionIndexRow: %d.\n", vPositionIndexRow);
-  uTextureRow = glGetUniformLocation(program, "u_texture");
-  uScreenGeometryRow = glGetUniformLocation(program, "u_screenGeometry");
-  uKernelRow = glGetUniformLocation(program, "u_kernel");
-  printf("uTextureRow: %d, uScreenGeometryRow: %d, uKernelRow: %d.\n",
-         uTextureRow, uScreenGeometryRow, uKernelRow);
-
-  program = g_programColumn;
-
-  vPositionIndexColumn = glGetAttribLocation(program, "v_position");
-  printf("vPositionIndexColumn: %d.\n", vPositionIndexColumn);
-  uTextureColumn = glGetUniformLocation(program, "u_texture");
-  uScreenGeometryColumn = glGetUniformLocation(program, "u_screenGeometry");
-  uKernelColumn = glGetUniformLocation(program, "u_kernel");
-  printf("uTextureColumn: %d, uScreenGeometryColumn: %d, uKernelColumn: %d.\n",
-         uTextureColumn, uScreenGeometryColumn, uKernelColumn);
-
-  program = g_programRender;
-
-  vPositionIndexRender = glGetAttribLocation(program, "v_position");
-  printf("vPositionIndexRender: %d.\n", vPositionIndexRender);
-  uTextureRender = glGetUniformLocation(program, "u_texture");
-  uScreenGeometryRender = glGetUniformLocation(program, "u_screenGeometry");
-  printf("uTextureRender: %d, uScreenGeometryRender: %d.\n", uTextureRender,
-         uScreenGeometryRender);
-#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-  GLuint fragmentThreshold = compileShaderSource(
-    GL_FRAGMENT_SHADER, 1, const_cast<const char**>(&thresholdFragSource));
-  g_programThreshold = createProgram(vertexShader, fragmentThreshold);
-  glDeleteShader(fragmentThreshold);
-  program = g_programThreshold;
-
-  vPositionIndexThreshold = glGetAttribLocation(program, "v_position");
-  printf("vPositionIndexThreshold: %d.\n", vPositionIndexThreshold);
-  uTextureOrigThreshold = glGetUniformLocation(program, "u_textureOrig");
-  uTextureBlurThreshold = glGetUniformLocation(program, "u_textureBlur");
-  uScreenGeometryThreshold = glGetUniformLocation(program, "u_screenGeometry");
-  uMaxValueThreshold = glGetUniformLocation(program, "u_maxValue");
-  printf("uTextureOrigThreshold: %d, uTextureBlurThreshold: %d, "
-         "uScreenGeometryRender: %d, uMaxValueThreshold: %d.\n",
-         uTextureOrigThreshold, uTextureBlurThreshold, uScreenGeometryThreshold,
-         uMaxValueThreshold);
-#endif // ENABLE_THRESHOLD_TEST
-  // clean up
-  glDeleteShader(vertexShader);
-  glDeleteShader(fragmentRowShader);
-  glDeleteShader(fragmentColumnShader);
-  glDeleteShader(fragmentRender);
-  checkError("initShader");
+    m_maxValue = maxValue;
+    initGaussianBlurKernel();
+    return initProgram();
 }
 
-void
-initRendering(void)
-{
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  checkError("initRendering");
-}
-
-static GLuint g_texture;
-void
-initTexture(void)
-{
-  glGenTextures(1, &g_texture);
-  glBindTexture(GL_TEXTURE_2D, g_texture);
-  nv::Image* image = g_image.get();
-  glTexImage2D(GL_TEXTURE_2D, 0, image->getInternalFormat(), image->getWidth(),
-               image->getHeight(), 0, image->getFormat(), image->getType(),
-               image->getLevel(0));
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-}
-
-void
-init(void)
-{
-  GLenum err;
-  err = glewInit();
-  if (GLEW_OK != err) {
-    fprintf(stderr, "glew init fails");
-    exit(1);
-  }
-  if (!GLEW_VERSION_2_0) {
-    fprintf(stderr, "OpenGL 2.0 fails");
-    exit(1);
-  }
-  initTexture();
-  initShader();
-  initRendering();
-  g_kernel = std::move(getGaussianKernel(g_block_size));
-}
-
-void
-dumpInfo(void)
-{
-  printf("Vendor: %s\n", glGetString(GL_VENDOR));
-  printf("Renderer: %s\n", glGetString(GL_RENDERER));
-  printf("Version: %s\n", glGetString(GL_VERSION));
-  printf("GLSL: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-  checkError("dumpInfo");
-}
-
-static std::vector<GLfloat>
-getGaussianKernel(int n)
+std::vector<GLfloat>
+ImageProcessor::getGaussianKernel(int n)
 {
   std::vector<GLfloat> kernel(n);
   float* cf = const_cast<float*>(kernel.data());
@@ -394,20 +195,228 @@ getGaussianKernel(int n)
   return kernel;
 }
 
-static void
-allocateTexture(GLuint texture, GLint width, GLint height, GLenum format)
+
+void ImageProcessor::initGaussianBlurKernel()
 {
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
-               GL_UNSIGNED_BYTE, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    m_kernel = std::move(getGaussianKernel(s_block_size));
+}
+
+static const char* vertexShaderSource = "#version 120\n"
+                                     "attribute vec4 v_position;\n"
+                                     "void main()\n"
+                                     "{\n"
+                                     "   gl_Position = v_position;\n"
+                                     "}\n";
+
+static const char* renderTexture = 
+  "#version 120\n" "uniform sampler2D u_texture;\n"
+  "uniform ivec2 u_screenGeometry;\n"
+  "void main(void)\n"
+  "{\n"
+  "   vec2 texcoord = gl_FragCoord.xy / vec2(u_screenGeometry);\n"
+  "   gl_FragColor = texture2D(u_texture, texcoord);\n"
+  "}\n";
+
+static const char* gaussianFragRowSource =
+"#version 120\n"
+"uniform sampler2D u_texture;\n"
+"uniform ivec2 u_screenGeometry;\n"
+"uniform float u_kernel[91];\n"
+"const int c_blockSize = 91;\n"
+"\n"
+"void main(void)\n"
+"{\n"
+"    int i;\n"
+"    vec2 texcoord = (gl_FragCoord.xy - ivec2(c_blockSize / 2, 0)) / vec2(u_screenGeometry);\n"
+"    float toffset = 1.0 / u_screenGeometry.x;\n"
+"    vec3 color = texture2D(u_texture, texcoord).rgb * vec3(u_kernel[0]);\n"
+"    for (i = 1; i < c_blockSize; ++i) {\n"
+"        color += texture2D(u_texture, texcoord + vec2(i * toffset, 0.0)).rgb * vec3(u_kernel[i]);\n"
+"    }\n"
+"    gl_FragColor = vec4(color, 1.0);\n"
+"}\n";
+
+static const char* gaussianFragColumnSource =
+"#version 120\n"
+"uniform sampler2D u_texture;\n"
+"uniform ivec2 u_screenGeometry;\n"
+"uniform float u_kernel[91];\n"
+"const int c_blockSize = 91;\n"
+"\n"
+"void main(void)\n"
+"{\n"
+"    int i;\n"
+"    vec2 texcoord = (gl_FragCoord.xy + ivec2(0, c_blockSize / 2)) / vec2(u_screenGeometry);\n"
+"    float toffset = 1.0 / u_screenGeometry.y;\n"
+"    vec3 color = texture2D(u_texture, texcoord).rgb * vec3(u_kernel[0]);\n"
+"    for (i = 1; i < c_blockSize; ++i) {\n"
+"        color += texture2D(u_texture, texcoord - vec2(0.0, i * toffset)).rgb * vec3(u_kernel[i]);\n"
+"    }\n"
+"    gl_FragColor = vec4(color, 1.0);\n"
+"}\n";
+
+#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
+static const char* thresholdFragSource =
+"#version 120\n"
+"\n"
+"uniform float u_maxValue;\n"
+"uniform ivec2 u_screenGeometry;\n"
+"uniform sampler2D u_textureOrig;\n"
+"uniform sampler2D u_textureBlur;\n"
+"\n"
+"void main(void)\n"
+"{\n"
+"    vec2 texcoord = gl_FragCoord.xy / vec2(u_screenGeometry);\n"
+"    vec3 colorOrig = texture2D(u_textureOrig, texcoord).rgb;\n"
+"    vec3 colorBlur = texture2D(u_textureBlur, texcoord).rgb;\n"
+"    vec3 result;\n"
+"    result.r = colorOrig.r > colorBlur.r ? u_maxValue : 0.0;\n"
+"    result.g = colorOrig.g > colorBlur.g ? u_maxValue : 0.0;\n"
+"    result.b = colorOrig.b > colorBlur.b ? u_maxValue : 0.0;\n"
+"    gl_FragColor = vec4(result, 1.0);\n"
+"}\n";
+#endif // ENABLE_THRESHOLD_TEST
+
+/* report GL errors, if any, to stderr */
+static bool 
+checkError(const char* functionName)
+{
+  GLenum error;
+  bool entered = false;
+  while ((error = glGetError()) != GL_NO_ERROR) {
+    fprintf(stderr, "GL error 0x%X detected in %s\n", error, functionName);
+    entered = true;
+  }
+  return !entered;
 }
 
 static void
-renderBlur(const ImageDesc& imgDesc)
+compileAndCheck(GLuint shader)
+{
+  GLint status;
+  glCompileShader(shader);
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+  if (status == GL_FALSE) {
+    GLint infoLogLength;
+    char* infoLog;
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
+    infoLog = (char*)malloc(infoLogLength);
+    glGetShaderInfoLog(shader, infoLogLength, NULL, infoLog);
+    fprintf(stderr, "compile log: %s\n", infoLog);
+    free(infoLog);
+  }
+}
+
+static GLuint
+compileShaderSource(GLenum type, GLsizei count, char const** string)
+{
+  GLuint shader = glCreateShader(type);
+  glShaderSource(shader, count, string, NULL);
+  compileAndCheck(shader);
+  return shader;
+}
+
+static void
+linkAndCheck(GLuint program)
+{
+  GLint status;
+  glLinkProgram(program);
+  glGetProgramiv(program, GL_LINK_STATUS, &status);
+  if (status == GL_FALSE) {
+    GLint infoLogLength;
+    char* infoLog;
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
+    infoLog = (char*)malloc(infoLogLength);
+    glGetProgramInfoLog(program, infoLogLength, NULL, infoLog);
+    fprintf(stderr, "link log: %s\n", infoLog);
+    free(infoLog);
+  }
+}
+
+static GLuint
+createProgram(GLuint vertexShader, GLuint fragmentShader)
+{
+  GLuint program = glCreateProgram();
+  if (vertexShader != 0) {
+    glAttachShader(program, vertexShader);
+  }
+  if (fragmentShader != 0) {
+    glAttachShader(program, fragmentShader);
+  }
+  linkAndCheck(program);
+  return program;
+}
+
+bool ImageProcessor::initProgram()
+{
+  GLuint vertexShader = compileShaderSource(GL_VERTEX_SHADER, 1,
+                                            &vertexShaderSource);
+
+  GLuint fragmentRowShader = compileShaderSource(
+    GL_FRAGMENT_SHADER, 1, &gaussianFragRowSource);
+
+  GLuint fragmentColumnShader = compileShaderSource(
+    GL_FRAGMENT_SHADER, 1, &gaussianFragColumnSource);
+  GLuint fragmentRender = compileShaderSource(
+    GL_FRAGMENT_SHADER, 1, &renderTexture);
+
+  m_programRow = createProgram(vertexShader, fragmentRowShader);
+  m_programColumn = createProgram(vertexShader, fragmentColumnShader);
+  m_programRender = createProgram(vertexShader, fragmentRender);
+  GLint program = m_programRow;
+  m_vPositionIndexRow = glGetAttribLocation(program, "v_position");
+  printf("m_vPositionIndexRow: %d.\n", m_vPositionIndexRow);
+  m_uTextureRow = glGetUniformLocation(program, "u_texture");
+  m_uScreenGeometryRow = glGetUniformLocation(program, "u_screenGeometry");
+  m_uKernelRow = glGetUniformLocation(program, "u_kernel");
+  printf("m_uTextureRow: %d, m_uScreenGeometryRow: %d, m_uKernelRow: %d.\n",
+         m_uTextureRow, m_uScreenGeometryRow, m_uKernelRow);
+
+  program = m_programColumn;
+
+  m_vPositionIndexColumn = glGetAttribLocation(program, "v_position");
+  printf("m_vPositionIndexColumn: %d.\n", m_vPositionIndexColumn);
+  m_uTextureColumn = glGetUniformLocation(program, "u_texture");
+  m_uScreenGeometryColumn = glGetUniformLocation(program, "u_screenGeometry");
+  m_uKernelColumn = glGetUniformLocation(program, "u_kernel");
+  printf("m_uTextureColumn: %d, m_uScreenGeometryColumn: %d, m_uKernelColumn: %d.\n",
+         m_uTextureColumn, m_uScreenGeometryColumn, m_uKernelColumn);
+
+  program = m_programRender;
+
+  m_vPositionIndexRender = glGetAttribLocation(program, "v_position");
+  printf("m_vPositionIndexRender: %d.\n", m_vPositionIndexRender);
+  m_uTextureRender = glGetUniformLocation(program, "u_texture");
+  m_uScreenGeometryRender = glGetUniformLocation(program, "u_screenGeometry");
+  printf("m_uTextureRender: %d, m_uScreenGeometryRender: %d.\n", m_uTextureRender,
+         m_uScreenGeometryRender);
+#if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
+  GLuint fragmentThreshold = compileShaderSource(
+    GL_FRAGMENT_SHADER, 1, &thresholdFragSource);
+  m_programThreshold = createProgram(vertexShader, fragmentThreshold);
+  glDeleteShader(fragmentThreshold);
+  program = m_programThreshold;
+
+  m_vPositionIndexThreshold = glGetAttribLocation(program, "v_position");
+  printf("m_vPositionIndexThreshold: %d.\n", m_vPositionIndexThreshold);
+  m_uTextureOrigThreshold = glGetUniformLocation(program, "u_textureOrig");
+  m_uTextureBlurThreshold = glGetUniformLocation(program, "u_textureBlur");
+  m_uScreenGeometryThresholdg = glGetUniformLocation(program, "u_screenGeometry");
+  m_uMaxValueThreshold = glGetUniformLocation(program, "u_maxValue");
+  printf("m_uTextureOrigThreshold: %d, m_uTextureBlurThreshold: %d, "
+         "m_uScreenGeometryRender: %d, m_uMaxValueThreshold: %d.\n",
+         m_uTextureOrigThreshold, m_uTextureBlurThreshold, m_uScreenGeometryThresholdg,
+         m_uMaxValueThreshold);
+#endif // ENABLE_THRESHOLD_TEST
+  // clean up
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentRowShader);
+  glDeleteShader(fragmentColumnShader);
+  glDeleteShader(fragmentRender);
+  return checkError("initProgram");
+}
+
+void ImageProcessor::process(const ImageDesc& desc)
 {
   static float positions[][4] = {
     { -1.0, 1.0, 0.0, 1.0 },
@@ -416,12 +425,14 @@ renderBlur(const ImageDesc& imgDesc)
     { 1.0, -1.0, 0.0, 1.0 },
   };
   GLuint tmpFramebuffer;
-  GLuint tmpTexture[2];
+  // zero for row blur, one for column blur, two for input image.
+  GLuint tmpTexture[3];
   // allocate fbo and a texture
   glGenFramebuffers(1, &tmpFramebuffer);
-  glGenTextures(2, tmpTexture);
-  allocateTexture(tmpTexture[0], imgDesc.width, imgDesc.height, imgDesc.format);
-  allocateTexture(tmpTexture[1], imgDesc.width, imgDesc.height, imgDesc.format);
+  glGenTextures(3, tmpTexture);
+  allocateTexture(tmpTexture[0], desc.width, desc.height, desc.format);
+  allocateTexture(tmpTexture[1], desc.width, desc.height, desc.format);
+  allocateTexture(tmpTexture[2], desc.width, desc.height, desc.format, desc.data);
   // bind fbo and complete it.
   glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -430,19 +441,19 @@ renderBlur(const ImageDesc& imgDesc)
     fprintf(stderr, "fbo is not completed.\n");
     exit(1);
   }
-  GLint imageGeometry[2] = { imgDesc.width, imgDesc.height };
-  glVertexAttribPointer(vPositionIndexRow, 4, GL_FLOAT, GL_FALSE, 0, positions);
-  glEnableVertexAttribArray(vPositionIndexRow);
-  glUseProgram(g_programRow);
+  GLint imageGeometry[2] = { desc.width, desc.height };
+  glVertexAttribPointer(m_vPositionIndexRow, 4, GL_FLOAT, GL_FALSE, 0, positions);
+  glEnableVertexAttribArray(m_vPositionIndexRow);
+  glUseProgram(m_programRow);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, g_texture);
-  glUniform1i(uTextureRow, 0);
+  glBindTexture(GL_TEXTURE_2D, tmpTexture[2]);
+  glUniform1i(m_uTextureRow, 0);
 
-  glUniform2iv(uScreenGeometryRow, 1, imageGeometry);
+  glUniform2iv(m_uScreenGeometryRow, 1, imageGeometry);
   // setup kernel and block size
 
-  glUniform1fv(uKernelRow, g_block_size, g_kernel.data());
+  glUniform1fv(m_uKernelRow, s_block_size, m_kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   // bind fbo and complete it.
   glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
@@ -452,57 +463,125 @@ renderBlur(const ImageDesc& imgDesc)
     fprintf(stderr, "fbo is not completed.\n");
     exit(1);
   }
-  glDisableVertexAttribArray(vPositionIndexRow);
+  glDisableVertexAttribArray(m_vPositionIndexRow);
 
-  glVertexAttribPointer(vPositionIndexColumn, 4, GL_FLOAT, GL_FALSE, 0,
+  glVertexAttribPointer(m_vPositionIndexColumn, 4, GL_FLOAT, GL_FALSE, 0,
                         positions);
-  glEnableVertexAttribArray(vPositionIndexColumn);
-  glUseProgram(g_programColumn);
+  glEnableVertexAttribArray(m_vPositionIndexColumn);
+  glUseProgram(m_programColumn);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tmpTexture[0]);
-  glUniform1i(uTextureColumn, 0);
+  glUniform1i(m_uTextureColumn, 0);
 
-  glUniform2iv(uScreenGeometryColumn, 1, imageGeometry);
+  glUniform2iv(m_uScreenGeometryColumn, 1, imageGeometry);
   // setup kernel and block size
 
-  glUniform1fv(uKernelColumn, g_block_size, g_kernel.data());
+  glUniform1fv(m_uKernelColumn, s_block_size, m_kernel.data());
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glDisableVertexAttribArray(vPositionIndexColumn);
+  glDisableVertexAttribArray(m_vPositionIndexColumn);
   // render to screen
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  glEnableVertexAttribArray(vPositionIndexRender);
-  glUseProgram(g_programRender);
+  glEnableVertexAttribArray(m_vPositionIndexRender);
+  glUseProgram(m_programRender);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tmpTexture[1]);
-  glUniform1i(uTextureRender, 0);
+  glUniform1i(m_uTextureRender, 0);
 
-  glUniform2iv(uScreenGeometryRender, 1, imageGeometry);
+  glUniform2iv(m_uScreenGeometryRender, 1, imageGeometry);
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glDisableVertexAttribArray(vPositionIndexRender);
+  glDisableVertexAttribArray(m_vPositionIndexRender);
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-  glEnableVertexAttribArray(vPositionIndexThreshold);
-  glUseProgram(g_programThreshold);
+  glEnableVertexAttribArray(m_vPositionIndexThreshold);
+  glUseProgram(m_programThreshold);
   // setup uniforms
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, g_texture);
-  glUniform1i(uTextureOrigThreshold, 0);
+  glBindTexture(GL_TEXTURE_2D, tmpTexture[2]);
+  glUniform1i(m_uTextureOrigThreshold, 0);
   glActiveTexture(GL_TEXTURE0 + 1);
   glBindTexture(GL_TEXTURE_2D, tmpTexture[1]);
-  glUniform1i(uTextureBlurThreshold, 1);
+  glUniform1i(m_uTextureBlurThreshold, 1);
 
-  glUniform2iv(uScreenGeometryThreshold, 1, imageGeometry);
-  glUniform1f(uMaxValueThreshold, static_cast<float>(g_maxVal) / 255.0f);
+  glUniform2iv(m_uScreenGeometryThresholdg, 1, imageGeometry);
+  glUniform1f(m_uMaxValueThreshold, static_cast<float>(m_maxValue) / 255.0f);
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glDisableVertexAttribArray(vPositionIndexThreshold);
+  glDisableVertexAttribArray(m_vPositionIndexThreshold);
 
 #endif // ENABLE_THRESHOLD_TEST
-  glDeleteTextures(2, tmpTexture);
+  glDeleteTextures(3, tmpTexture);
   glDeleteFramebuffers(1, &tmpFramebuffer);
+}
+
+void
+ImageProcessor::allocateTexture(GLuint texture, GLint width, GLint height, GLenum format, void* data)
+{
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
+               GL_UNSIGNED_BYTE, data);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
+static nv::Image*
+gaussianLoadImageFromFile(const char* file)
+{
+  std::unique_ptr<nv::Image> image(new nv::Image());
+
+  if (!image->loadImageFromFile(file)) {
+    return NULL;
+  }
+
+  return image.release();
+}
+
+void
+initRendering(void)
+{
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  checkError("initRendering");
+}
+
+static ImageProcessor g_ip;
+void
+init(void)
+{
+  GLenum err;
+  err = glewInit();
+  if (GLEW_OK != err) {
+    fprintf(stderr, "glew init fails.\n");
+    exit(1);
+  }
+  if (!GLEW_VERSION_2_0) {
+    fprintf(stderr, "OpenGL 2.0 fails.\n");
+    exit(1);
+  }
+  if (!g_ip.init(g_maxVal)) {
+    fprintf(stderr, "image process initialize failed.\n");
+    exit(1);
+  }
+  initRendering();
+}
+
+void
+dumpInfo(void)
+{
+  printf("Vendor: %s\n", glGetString(GL_VENDOR));
+  printf("Renderer: %s\n", glGetString(GL_RENDERER));
+  printf("Version: %s\n", glGetString(GL_VERSION));
+  printf("GLSL: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+  checkError("dumpInfo");
+}
+
+static void
+renderBlur(const ImageDesc& imgDesc)
+{
+    g_ip.process(imgDesc);
 }
 
 static void
@@ -516,7 +595,7 @@ triangle_normal(void)
   clock_gettime(CLOCK_MONOTONIC, &t1);
 #endif
   ImageDesc desc = { g_image->getWidth(), g_image->getHeight(),
-                     g_image->getFormat() };
+                     g_image->getFormat(), g_image->getLevel(0) };
   renderBlur(desc);
   std::unique_ptr<char[]> buffer(new char[desc.width * desc.height * 3]);
   glReadPixels(0, 0, desc.width, desc.height, GL_RGB, GL_UNSIGNED_BYTE, buffer.get());
