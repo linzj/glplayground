@@ -508,14 +508,6 @@ renderBlur(const ImageDesc& imgDesc)
 static void
 triangle_normal(void)
 {
-  ImageDesc desc = { g_image->getWidth(), g_image->getHeight(),
-                     g_image->getFormat() };
-  renderBlur(desc);
-}
-
-static void
-display(void)
-{
 #ifdef _WIN32
   LARGE_INTEGER t1, t2, freq;
   QueryPerformanceCounter(&t1);
@@ -523,10 +515,11 @@ display(void)
   struct timespec t1, t2;
   clock_gettime(CLOCK_MONOTONIC, &t1);
 #endif
-  glClear(GL_COLOR_BUFFER_BIT);
-  triangle_normal();
-  glutSwapBuffers();
-  checkError("display");
+  ImageDesc desc = { g_image->getWidth(), g_image->getHeight(),
+                     g_image->getFormat() };
+  renderBlur(desc);
+  std::unique_ptr<char[]> buffer(new char[desc.width * desc.height * 3]);
+  glReadPixels(0, 0, desc.width, desc.height, GL_RGB, GL_UNSIGNED_BYTE, buffer.get());
 #ifdef _WIN32
   QueryPerformanceCounter(&t2);
   QueryPerformanceFrequency(&freq);
@@ -537,6 +530,15 @@ display(void)
   printf("one frame: %lf.\n", ((double)(t2.tv_sec - t1.tv_sec) +
                                ((double)(t2.tv_nsec - t1.tv_nsec) / 1e9)));
 #endif
+}
+
+static void
+display(void)
+{
+  glClear(GL_COLOR_BUFFER_BIT);
+  triangle_normal();
+  glutSwapBuffers();
+  checkError("display");
 }
 
 static void
