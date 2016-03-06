@@ -76,95 +76,98 @@ static const int g_maxVal = 211;
 class ImageProcessor
 {
 public:
-    ImageProcessor();
-    ~ImageProcessor();
-    bool init(int maxValue);
-    void process(const ImageDesc& desc);
-    std::vector<GLfloat> m_kernel;
+  ImageProcessor();
+  ~ImageProcessor();
+  bool init(int maxValue);
+  void process(const ImageDesc& desc);
+  std::vector<GLfloat> m_kernel;
 
-    GLint m_vPositionIndexRow;
-    GLint m_uTextureRow;
-    GLint m_uScreenGeometryRow;
-    GLint m_uKernelRow;
-    GLint m_programRow;
+  GLint m_vPositionIndexRow;
+  GLint m_uTextureRow;
+  GLint m_uScreenGeometryRow;
+  GLint m_uKernelRow;
+  GLint m_programRow;
 
-    GLint m_vPositionIndexColumn;
-    GLint m_uTextureColumn;
-    GLint m_uScreenGeometryColumn;
-    GLint m_uKernelColumn;
-    GLint m_programColumn;
+  GLint m_vPositionIndexColumn;
+  GLint m_uTextureColumn;
+  GLint m_uScreenGeometryColumn;
+  GLint m_uKernelColumn;
+  GLint m_programColumn;
 
-    GLint m_vPositionIndexRender;
-    GLint m_uTextureRender;
-    GLint m_uScreenGeometryRender;
-    GLint m_programRender;
-    GLint m_maxValue;
+  GLint m_vPositionIndexRender;
+  GLint m_uTextureRender;
+  GLint m_uScreenGeometryRender;
+  GLint m_programRender;
+  GLint m_maxValue;
 
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-    GLint m_vPositionIndexThreshold;
-    GLint m_uTextureOrigThreshold;
-    GLint m_uTextureBlurThreshold;
-    GLint m_uScreenGeometryThresholdg;
-    GLint m_uMaxValueThreshold;
-    GLint m_programThreshold;
+  GLint m_vPositionIndexThreshold;
+  GLint m_uTextureOrigThreshold;
+  GLint m_uTextureBlurThreshold;
+  GLint m_uScreenGeometryThresholdg;
+  GLint m_uMaxValueThreshold;
+  GLint m_programThreshold;
 #endif // ENABLE_THRESHOLD_TEST
 private:
-    static const GLint s_block_size = 91;
-    void initGaussianBlurKernel();
-    bool initProgram();
-    void allocateTexture(GLuint texture, GLint width, GLint height, GLenum format, void* data = nullptr);
-    static std::vector<GLfloat> getGaussianKernel(int n);
+  static const GLint s_block_size = 91;
+  void initGaussianBlurKernel();
+  bool initProgram();
+  void allocateTexture(GLuint texture, GLint width, GLint height, GLenum format,
+                       void* data = nullptr);
+  static std::vector<GLfloat> getGaussianKernel(int n);
 };
 
 ImageProcessor::ImageProcessor()
-    : m_vPositionIndexRow(0)
-    , m_uTextureRow(0)
-    , m_uScreenGeometryRow(0)
-    , m_uKernelRow(0)
-    , m_programRow(0)
-    , m_vPositionIndexColumn(0)
-    , m_uTextureColumn(0)
-    , m_uScreenGeometryColumn(0)
-    , m_uKernelColumn(0)
-    , m_programColumn(0)
-    , m_vPositionIndexRender(0)
-    , m_uTextureRender(0)
-    , m_uScreenGeometryRender(0)
-    , m_programRender(0)
-     , m_maxValue(0)
+  : m_vPositionIndexRow(0)
+  , m_uTextureRow(0)
+  , m_uScreenGeometryRow(0)
+  , m_uKernelRow(0)
+  , m_programRow(0)
+  , m_vPositionIndexColumn(0)
+  , m_uTextureColumn(0)
+  , m_uScreenGeometryColumn(0)
+  , m_uKernelColumn(0)
+  , m_programColumn(0)
+  , m_vPositionIndexRender(0)
+  , m_uTextureRender(0)
+  , m_uScreenGeometryRender(0)
+  , m_programRender(0)
+  , m_maxValue(0)
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-    , m_vPositionIndexThreshold(0)
-    , m_uTextureOrigThreshold(0)
-    , m_uTextureBlurThreshold(0)
-    , m_uScreenGeometryThresholdg(0)
-    , m_uMaxValueThreshold(0)
-    , m_programThreshold(0)
+  , m_vPositionIndexThreshold(0)
+  , m_uTextureOrigThreshold(0)
+  , m_uTextureBlurThreshold(0)
+  , m_uScreenGeometryThresholdg(0)
+  , m_uMaxValueThreshold(0)
+  , m_programThreshold(0)
 #endif // ENABLE_THRESHOLD_TEST
-{}
+{
+}
 
 ImageProcessor::~ImageProcessor()
 {
-    if (m_programRow) {
-        glDeleteProgram(m_programRow);
-    }
-    if (m_programColumn) {
-        glDeleteProgram(m_programColumn);
-    }
-    if (m_programRender) {
-        glDeleteProgram(m_programRender);
-    }
+  if (m_programRow) {
+    glDeleteProgram(m_programRow);
+  }
+  if (m_programColumn) {
+    glDeleteProgram(m_programColumn);
+  }
+  if (m_programRender) {
+    glDeleteProgram(m_programRender);
+  }
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-    if (m_programThreshold) {
-        glDeleteProgram(m_programThreshold);
-    }
+  if (m_programThreshold) {
+    glDeleteProgram(m_programThreshold);
+  }
 #endif // ENABLE_THRESHOLD_TEST
 }
 
-bool ImageProcessor::init(int maxValue)
+bool
+ImageProcessor::init(int maxValue)
 {
-    m_maxValue = maxValue;
-    initGaussianBlurKernel();
-    return initProgram();
+  m_maxValue = maxValue;
+  initGaussianBlurKernel();
+  return initProgram();
 }
 
 std::vector<GLfloat>
@@ -195,21 +198,22 @@ ImageProcessor::getGaussianKernel(int n)
   return kernel;
 }
 
-
-void ImageProcessor::initGaussianBlurKernel()
+void
+ImageProcessor::initGaussianBlurKernel()
 {
-    m_kernel = std::move(getGaussianKernel(s_block_size));
+  m_kernel = std::move(getGaussianKernel(s_block_size));
 }
 
 static const char* vertexShaderSource = "#version 120\n"
-                                     "attribute vec4 v_position;\n"
-                                     "void main()\n"
-                                     "{\n"
-                                     "   gl_Position = v_position;\n"
-                                     "}\n";
+                                        "attribute vec4 v_position;\n"
+                                        "void main()\n"
+                                        "{\n"
+                                        "   gl_Position = v_position;\n"
+                                        "}\n";
 
-static const char* renderTexture = 
-  "#version 120\n" "uniform sampler2D u_texture;\n"
+static const char* renderTexture =
+  "#version 120\n"
+  "uniform sampler2D u_texture;\n"
   "uniform ivec2 u_screenGeometry;\n"
   "void main(void)\n"
   "{\n"
@@ -218,67 +222,71 @@ static const char* renderTexture =
   "}\n";
 
 static const char* gaussianFragRowSource =
-"#version 120\n"
-"uniform sampler2D u_texture;\n"
-"uniform ivec2 u_screenGeometry;\n"
-"uniform float u_kernel[91];\n"
-"const int c_blockSize = 91;\n"
-"\n"
-"void main(void)\n"
-"{\n"
-"    int i;\n"
-"    vec2 texcoord = (gl_FragCoord.xy - ivec2(c_blockSize / 2, 0)) / vec2(u_screenGeometry);\n"
-"    float toffset = 1.0 / u_screenGeometry.x;\n"
-"    vec3 color = texture2D(u_texture, texcoord).rgb * vec3(u_kernel[0]);\n"
-"    for (i = 1; i < c_blockSize; ++i) {\n"
-"        color += texture2D(u_texture, texcoord + vec2(i * toffset, 0.0)).rgb * vec3(u_kernel[i]);\n"
-"    }\n"
-"    gl_FragColor = vec4(color, 1.0);\n"
-"}\n";
+  "#version 120\n"
+  "uniform sampler2D u_texture;\n"
+  "uniform ivec2 u_screenGeometry;\n"
+  "uniform float u_kernel[91];\n"
+  "const int c_blockSize = 91;\n"
+  "\n"
+  "void main(void)\n"
+  "{\n"
+  "    int i;\n"
+  "    vec2 texcoord = (gl_FragCoord.xy - ivec2(c_blockSize / 2, 0)) / "
+  "vec2(u_screenGeometry);\n"
+  "    float toffset = 1.0 / u_screenGeometry.x;\n"
+  "    vec3 color = texture2D(u_texture, texcoord).rgb * vec3(u_kernel[0]);\n"
+  "    for (i = 1; i < c_blockSize; ++i) {\n"
+  "        color += texture2D(u_texture, texcoord + vec2(i * toffset, "
+  "0.0)).rgb * vec3(u_kernel[i]);\n"
+  "    }\n"
+  "    gl_FragColor = vec4(color, 1.0);\n"
+  "}\n";
 
 static const char* gaussianFragColumnSource =
-"#version 120\n"
-"uniform sampler2D u_texture;\n"
-"uniform ivec2 u_screenGeometry;\n"
-"uniform float u_kernel[91];\n"
-"const int c_blockSize = 91;\n"
-"\n"
-"void main(void)\n"
-"{\n"
-"    int i;\n"
-"    vec2 texcoord = (gl_FragCoord.xy + ivec2(0, c_blockSize / 2)) / vec2(u_screenGeometry);\n"
-"    float toffset = 1.0 / u_screenGeometry.y;\n"
-"    vec3 color = texture2D(u_texture, texcoord).rgb * vec3(u_kernel[0]);\n"
-"    for (i = 1; i < c_blockSize; ++i) {\n"
-"        color += texture2D(u_texture, texcoord - vec2(0.0, i * toffset)).rgb * vec3(u_kernel[i]);\n"
-"    }\n"
-"    gl_FragColor = vec4(color, 1.0);\n"
-"}\n";
+  "#version 120\n"
+  "uniform sampler2D u_texture;\n"
+  "uniform ivec2 u_screenGeometry;\n"
+  "uniform float u_kernel[91];\n"
+  "const int c_blockSize = 91;\n"
+  "\n"
+  "void main(void)\n"
+  "{\n"
+  "    int i;\n"
+  "    vec2 texcoord = (gl_FragCoord.xy + ivec2(0, c_blockSize / 2)) / "
+  "vec2(u_screenGeometry);\n"
+  "    float toffset = 1.0 / u_screenGeometry.y;\n"
+  "    vec3 color = texture2D(u_texture, texcoord).rgb * vec3(u_kernel[0]);\n"
+  "    for (i = 1; i < c_blockSize; ++i) {\n"
+  "        color += texture2D(u_texture, texcoord - vec2(0.0, i * "
+  "toffset)).rgb * vec3(u_kernel[i]);\n"
+  "    }\n"
+  "    gl_FragColor = vec4(color, 1.0);\n"
+  "}\n";
 
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
 static const char* thresholdFragSource =
-"#version 120\n"
-"\n"
-"uniform float u_maxValue;\n"
-"uniform ivec2 u_screenGeometry;\n"
-"uniform sampler2D u_textureOrig;\n"
-"uniform sampler2D u_textureBlur;\n"
-"\n"
-"void main(void)\n"
-"{\n"
-"    vec2 texcoord = gl_FragCoord.xy / vec2(u_screenGeometry);\n"
-"    vec3 colorOrig = texture2D(u_textureOrig, texcoord).rgb;\n"
-"    vec3 colorBlur = texture2D(u_textureBlur, texcoord).rgb;\n"
-"    vec3 result;\n"
-"    result.r = colorOrig.r > colorBlur.r ? u_maxValue : 0.0;\n"
-"    result.g = colorOrig.g > colorBlur.g ? u_maxValue : 0.0;\n"
-"    result.b = colorOrig.b > colorBlur.b ? u_maxValue : 0.0;\n"
-"    gl_FragColor = vec4(result, 1.0);\n"
-"}\n";
+  "#version 120\n"
+  "\n"
+  "uniform float u_maxValue;\n"
+  "uniform ivec2 u_screenGeometry;\n"
+  "uniform sampler2D u_textureOrig;\n"
+  "uniform sampler2D u_textureBlur;\n"
+  "\n"
+  "void main(void)\n"
+  "{\n"
+  "    vec2 texcoord = gl_FragCoord.xy / vec2(u_screenGeometry);\n"
+  "    vec3 colorOrig = texture2D(u_textureOrig, texcoord).rgb;\n"
+  "    vec3 colorBlur = texture2D(u_textureBlur, texcoord).rgb;\n"
+  "    vec3 result;\n"
+  "    result.r = colorOrig.r > colorBlur.r ? u_maxValue : 0.0;\n"
+  "    result.g = colorOrig.g > colorBlur.g ? u_maxValue : 0.0;\n"
+  "    result.b = colorOrig.b > colorBlur.b ? u_maxValue : 0.0;\n"
+  "    gl_FragColor = vec4(result, 1.0);\n"
+  "}\n";
 #endif // ENABLE_THRESHOLD_TEST
 
 /* report GL errors, if any, to stderr */
-static bool 
+static bool
 checkError(const char* functionName)
 {
   GLenum error;
@@ -347,18 +355,19 @@ createProgram(GLuint vertexShader, GLuint fragmentShader)
   return program;
 }
 
-bool ImageProcessor::initProgram()
+bool
+ImageProcessor::initProgram()
 {
-  GLuint vertexShader = compileShaderSource(GL_VERTEX_SHADER, 1,
-                                            &vertexShaderSource);
+  GLuint vertexShader =
+    compileShaderSource(GL_VERTEX_SHADER, 1, &vertexShaderSource);
 
-  GLuint fragmentRowShader = compileShaderSource(
-    GL_FRAGMENT_SHADER, 1, &gaussianFragRowSource);
+  GLuint fragmentRowShader =
+    compileShaderSource(GL_FRAGMENT_SHADER, 1, &gaussianFragRowSource);
 
-  GLuint fragmentColumnShader = compileShaderSource(
-    GL_FRAGMENT_SHADER, 1, &gaussianFragColumnSource);
-  GLuint fragmentRender = compileShaderSource(
-    GL_FRAGMENT_SHADER, 1, &renderTexture);
+  GLuint fragmentColumnShader =
+    compileShaderSource(GL_FRAGMENT_SHADER, 1, &gaussianFragColumnSource);
+  GLuint fragmentRender =
+    compileShaderSource(GL_FRAGMENT_SHADER, 1, &renderTexture);
 
   m_programRow = createProgram(vertexShader, fragmentRowShader);
   m_programColumn = createProgram(vertexShader, fragmentColumnShader);
@@ -379,7 +388,8 @@ bool ImageProcessor::initProgram()
   m_uTextureColumn = glGetUniformLocation(program, "u_texture");
   m_uScreenGeometryColumn = glGetUniformLocation(program, "u_screenGeometry");
   m_uKernelColumn = glGetUniformLocation(program, "u_kernel");
-  printf("m_uTextureColumn: %d, m_uScreenGeometryColumn: %d, m_uKernelColumn: %d.\n",
+  printf("m_uTextureColumn: %d, m_uScreenGeometryColumn: %d, m_uKernelColumn: "
+         "%d.\n",
          m_uTextureColumn, m_uScreenGeometryColumn, m_uKernelColumn);
 
   program = m_programRender;
@@ -388,11 +398,11 @@ bool ImageProcessor::initProgram()
   printf("m_vPositionIndexRender: %d.\n", m_vPositionIndexRender);
   m_uTextureRender = glGetUniformLocation(program, "u_texture");
   m_uScreenGeometryRender = glGetUniformLocation(program, "u_screenGeometry");
-  printf("m_uTextureRender: %d, m_uScreenGeometryRender: %d.\n", m_uTextureRender,
-         m_uScreenGeometryRender);
+  printf("m_uTextureRender: %d, m_uScreenGeometryRender: %d.\n",
+         m_uTextureRender, m_uScreenGeometryRender);
 #if defined(ENABLE_THRESHOLD_TEST) && (ENABLE_THRESHOLD_TEST == 1)
-  GLuint fragmentThreshold = compileShaderSource(
-    GL_FRAGMENT_SHADER, 1, &thresholdFragSource);
+  GLuint fragmentThreshold =
+    compileShaderSource(GL_FRAGMENT_SHADER, 1, &thresholdFragSource);
   m_programThreshold = createProgram(vertexShader, fragmentThreshold);
   glDeleteShader(fragmentThreshold);
   program = m_programThreshold;
@@ -401,12 +411,13 @@ bool ImageProcessor::initProgram()
   printf("m_vPositionIndexThreshold: %d.\n", m_vPositionIndexThreshold);
   m_uTextureOrigThreshold = glGetUniformLocation(program, "u_textureOrig");
   m_uTextureBlurThreshold = glGetUniformLocation(program, "u_textureBlur");
-  m_uScreenGeometryThresholdg = glGetUniformLocation(program, "u_screenGeometry");
+  m_uScreenGeometryThresholdg =
+    glGetUniformLocation(program, "u_screenGeometry");
   m_uMaxValueThreshold = glGetUniformLocation(program, "u_maxValue");
   printf("m_uTextureOrigThreshold: %d, m_uTextureBlurThreshold: %d, "
          "m_uScreenGeometryRender: %d, m_uMaxValueThreshold: %d.\n",
-         m_uTextureOrigThreshold, m_uTextureBlurThreshold, m_uScreenGeometryThresholdg,
-         m_uMaxValueThreshold);
+         m_uTextureOrigThreshold, m_uTextureBlurThreshold,
+         m_uScreenGeometryThresholdg, m_uMaxValueThreshold);
 #endif // ENABLE_THRESHOLD_TEST
   // clean up
   glDeleteShader(vertexShader);
@@ -416,7 +427,8 @@ bool ImageProcessor::initProgram()
   return checkError("initProgram");
 }
 
-void ImageProcessor::process(const ImageDesc& desc)
+void
+ImageProcessor::process(const ImageDesc& desc)
 {
   static float positions[][4] = {
     { -1.0, 1.0, 0.0, 1.0 },
@@ -432,7 +444,8 @@ void ImageProcessor::process(const ImageDesc& desc)
   glGenTextures(3, tmpTexture);
   allocateTexture(tmpTexture[0], desc.width, desc.height, desc.format);
   allocateTexture(tmpTexture[1], desc.width, desc.height, desc.format);
-  allocateTexture(tmpTexture[2], desc.width, desc.height, desc.format, desc.data);
+  allocateTexture(tmpTexture[2], desc.width, desc.height, desc.format,
+                  desc.data);
   // bind fbo and complete it.
   glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -442,7 +455,8 @@ void ImageProcessor::process(const ImageDesc& desc)
     exit(1);
   }
   GLint imageGeometry[2] = { desc.width, desc.height };
-  glVertexAttribPointer(m_vPositionIndexRow, 4, GL_FLOAT, GL_FALSE, 0, positions);
+  glVertexAttribPointer(m_vPositionIndexRow, 4, GL_FLOAT, GL_FALSE, 0,
+                        positions);
   glEnableVertexAttribArray(m_vPositionIndexRow);
   glUseProgram(m_programRow);
   // setup uniforms
@@ -517,7 +531,8 @@ void ImageProcessor::process(const ImageDesc& desc)
 }
 
 void
-ImageProcessor::allocateTexture(GLuint texture, GLint width, GLint height, GLenum format, void* data)
+ImageProcessor::allocateTexture(GLuint texture, GLint width, GLint height,
+                                GLenum format, void* data)
 {
   glBindTexture(GL_TEXTURE_2D, texture);
   glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
@@ -581,7 +596,7 @@ dumpInfo(void)
 static void
 renderBlur(const ImageDesc& imgDesc)
 {
-    g_ip.process(imgDesc);
+  g_ip.process(imgDesc);
 }
 
 static void
@@ -598,7 +613,8 @@ triangle_normal(void)
                      g_image->getFormat(), g_image->getLevel(0) };
   renderBlur(desc);
   std::unique_ptr<char[]> buffer(new char[desc.width * desc.height * 3]);
-  glReadPixels(0, 0, desc.width, desc.height, GL_RGB, GL_UNSIGNED_BYTE, buffer.get());
+  glReadPixels(0, 0, desc.width, desc.height, GL_RGB, GL_UNSIGNED_BYTE,
+               buffer.get());
 #ifdef _WIN32
   QueryPerformanceCounter(&t2);
   QueryPerformanceFrequency(&freq);
