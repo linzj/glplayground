@@ -27,8 +27,10 @@
  */
 
 #include <GL/freeglut.h>
+#include <unistd.h>
 #include "../fg_internal.h"
 
+#if 0
 /* we'll try to use XR&R if it's available at compile-time, and at runtime, and the user
  * hasn't explicitly disabled it by setting the FREEGLUT_NO_XRANDR env-var.
  */
@@ -66,6 +68,7 @@ static int use_xf86vm(void)
 	return 0;	/* no compile-time support */
 #endif
 }
+#endif
 
 
 #ifdef HAVE_X11_EXTENSIONS_XRANDR_H

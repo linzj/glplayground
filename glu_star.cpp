@@ -78,7 +78,6 @@ static int draw_normal = 0;
 /* the name of the vertex buffer object */
 static GLuint vertexBufferName;
 static GLuint vertexArrayName;
-static GLenum topology;
 
 /* vertex array data for a colored 2D triangle, consisting of RGB color values
    and XY coordinates */
@@ -312,7 +311,7 @@ Mesh::dump()
     fprintf(stderr, "type: %x.\n", desc.type);
     Point* p = points_.data();
     p += desc.byteOffset / sizeof(Point);
-    for (int i = 0; i < desc.countOfPoint; ++i) {
+    for (unsigned i = 0; i < desc.countOfPoint; ++i) {
       fprintf(stderr, "{ %lf, %lf, %lf}\n", p[i].x, p[i].y, p[i].z);
     }
     fprintf(stderr, "\n");

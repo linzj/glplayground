@@ -1,0 +1,106 @@
+import("//build/config/compiler/compiler.gni")
+import("//build/config/features.gni")
+import("//build/config/sanitizers/sanitizers.gni")
+import("//build/config/ui.gni")
+
+group("gn_all") {
+  testonly = true
+
+  deps = [
+    "//graduate-article:oit",
+  ]
+}
+
+executable("simple_triangle") {
+  sources = [
+    "simple-triangle.c",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+  ]
+}
+
+executable("etc1_cpu") {
+  sources = [
+    "etc1_cpu.c",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+  ]
+}
+
+executable("glu_star") {
+  sources = [
+    "glu_star.cpp",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+  ]
+}
+
+executable("etc1_cs") {
+  sources = [
+    "etc1_cs.c",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+  ]
+}
+
+executable("etc1_frag") {
+  sources = [
+    "etc1_frag.c",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+  ]
+}
+
+executable("s3tc_cs") {
+  sources = [
+    "s3tc_cs.c",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+  ]
+}
+
+executable("s3tc_cpu") {
+  sources = [
+    "s3tc_cpu.cpp",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+    "//squish",
+  ]
+}
+
+executable("Geodesic") {
+  sources = [
+    "Geodesic.c",
+  ]
+  include_dirs = [ "lib/vectormath" ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+    "//lib/glsw",
+  ]
+}
+
+executable("gaussian-blur") {
+  sources = [
+    "gaussian-blur.cpp",
+  ]
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+    "//nvlib",
+  ]
+}

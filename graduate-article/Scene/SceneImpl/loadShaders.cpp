@@ -18,7 +18,7 @@ Scene::SceneImpl::loadShaders(SceneObject* pScene)
       continue;
     }
 
-    int length;
+    size_t length;
 
     void* filecontent = mapWholeFile(cur->file_name, &length);
 
@@ -34,7 +34,7 @@ Scene::SceneImpl::loadShaders(SceneObject* pScene)
         new SceneInitException("Unable to create a shader!"));
     }
 
-    glShaderSource(shader, 1, (const GLchar**)&filecontent, &length);
+    glShaderSource(shader, 1, (const GLchar**)&filecontent, (const GLint*)&length);
 
     unmapFile(filecontent);
     glCompileShader(shader);

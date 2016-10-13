@@ -2,7 +2,7 @@
 #include "../DrawableModel.hpp"
 #include <GL/glew.h>
 namespace lin {
-void* mapWholeFile(const char* filename, int* length);
+void* mapWholeFile(const char* filename, size_t* length);
 void unmapFile(void*);
 
 class SdkModel : public lin::DrawableModel
@@ -83,7 +83,7 @@ bool
 SdkModel::loadSdkMeshFromFile(const char* filename)
 {
   char* file_content;
-  int file_size;
+  size_t file_size;
   SDKMESH_HEADER* sdkmesh_header;
   SDKMESH_MESH* mesh;
   SDKMESH_SUBSET* subset;
@@ -194,7 +194,7 @@ SdkModel::loadSdkMeshFromFile(const char* filename)
     glEnableVertexAttribArray(index);
     glVertexAttribPointer(index, 1 + size, GL_FLOAT, GL_FALSE,
                           vertex_buffer_header->StrideBytes,
-                          (GLvoid*)cur->Offset);
+                          (GLvoid*)(GLintptr)cur->Offset);
   }
   switch (index_buffer_header->IndexType) {
     case 0:

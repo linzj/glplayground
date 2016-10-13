@@ -226,6 +226,8 @@ const GLuint* Model::getCompiledIndices( Model::PrimType prim) const {
             return (_indices[2].size() > 0) ? &_indices[2][0] : 0;
         case Model::eptTrianglesWithAdjacency:
             return (_indices[3].size() > 0) ? &_indices[3][0] : 0;
+        default:
+            break;
     }
 
     return 0; 
@@ -294,6 +296,8 @@ int Model::getCompiledIndexCount( Model::PrimType prim) const {
             return (int)_indices[2].size();
         case Model::eptTrianglesWithAdjacency:
             return (int)_indices[3].size();
+        default:
+            break;
     }
 
     return 0;

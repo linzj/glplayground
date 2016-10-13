@@ -1,0 +1,48 @@
+declare_args() {
+}
+
+config("squish_config") {
+  include_dirs = [ "." ]
+}
+
+static_library("squish") {
+  libs = []
+  cflags = []
+  include_dirs = [ "." ]
+  defines = [ "SQUISH_USE_SSE" ]
+  public_configs = [ ":squish_config" ]
+  sources = [
+    "alpha.cpp",
+    "alpha.h",
+    "clusterfit.cpp",
+    "clusterfit.h",
+    "colourblock.cpp",
+    "colourblock.h",
+    "colourfit.cpp",
+    "colourfit.h",
+    "colourset.cpp",
+    "colourset.h",
+    "maths.cpp",
+    "maths.h",
+    "rangefit.cpp",
+    "rangefit.h",
+    "simd.h",
+    "simd_float.h",
+    "simd_sse.h",
+    "simd_ve.h",
+    "singlecolourfit.cpp",
+    "singlecolourfit.h",
+    "squish.cpp",
+    "squish.h",
+  ]
+
+  configs += [ "//build/config:precompiled_headers" ]
+
+  public_deps = []
+  deps = []
+
+  if (!is_debug && (is_win || is_android)) {
+    configs -= [ "//build/config/compiler:default_optimization" ]
+    configs += [ "//build/config/compiler:optimize_max" ]
+  }
+}

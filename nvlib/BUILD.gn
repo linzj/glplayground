@@ -1,0 +1,53 @@
+declare_args() {
+}
+
+config("nvlib_config") {
+  include_dirs = [
+    "nvImage/include/",
+    "nvModel/include/",
+  ]
+}
+
+static_library("nvlib") {
+  include_dirs = [
+    "nvImage/include/",
+    "nvModel/include/",
+  ]
+  defines = [ "GLEW_STATIC" ]
+  sources = [
+    "nvImage/src/nvImage.cpp",
+    "nvImage/src/nvImageDDS.cpp",
+    "nvImage/src/nvImageHdr.cpp",
+    "nvImage/src/nvImagePng.cpp",
+    "nvImage/src/rgbe.c",
+    "nvImage/src/rgbe.h",
+    "nvModel/include/framebufferObject.h",
+    "nvModel/include/nvGlutManipulators.h",
+    "nvModel/include/nvManipulators.h",
+    "nvModel/include/nvMath.h",
+    "nvModel/include/nvMatrix.h",
+    "nvModel/include/nvModel.h",
+    "nvModel/include/nvQuaternion.h",
+    "nvModel/include/nvSDKPath.h",
+    "nvModel/include/nvShaderUtils.h",
+    "nvModel/include/nvTime.h",
+    "nvModel/include/nvVector.h",
+    "nvModel/include/renderbuffer.h",
+    "nvModel/src/nvModel.cpp",
+    "nvModel/src/nvModelObj.cpp",
+    "nvModel/src/nvModelQuery.cpp",
+  ]
+
+  configs += [ "//build/config:precompiled_headers" ]
+  public_configs = [ ":nvlib_config" ]
+
+  public_deps = [
+    "//libpng-1.2.51:libpng",
+    "//zlib-1.2.8:zlib",
+  ]
+
+  if (!is_debug && (is_win || is_android)) {
+    configs -= [ "//build/config/compiler:default_optimization" ]
+    configs += [ "//build/config/compiler:optimize_max" ]
+  }
+}

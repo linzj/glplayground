@@ -1,7 +1,7 @@
 #include <Windows.h>
 namespace lin {
 void*
-mapWholeFile(const char* filename, int* length)
+mapWholeFile(const char* filename, size_t* length)
 {
   HANDLE hFile = NULL;
   HANDLE hFileMapping = NULL;

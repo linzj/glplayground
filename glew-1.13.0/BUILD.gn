@@ -1,0 +1,28 @@
+declare_args() {
+}
+
+config("glew_config") {
+  include_dirs = [ "include" ]
+  defines = [ "GLEW_STATIC" ]
+}
+
+static_library("glew") {
+  libs = []
+  cflags = []
+  include_dirs = [ "include" ]
+  defines = [ "GLEW_STATIC" ]
+  sources = [
+    "src/glew.c",
+  ]
+
+  configs += [ "//build/config:precompiled_headers" ]
+
+  public_deps = []
+  deps = []
+  public_configs = [ ":glew_config" ]
+
+  if (!is_debug && (is_win || is_android)) {
+    configs -= [ "//build/config/compiler:default_optimization" ]
+    configs += [ "//build/config/compiler:optimize_max" ]
+  }
+}

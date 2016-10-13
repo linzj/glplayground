@@ -1,0 +1,39 @@
+executable("oit") {
+  include_dirs = [ "Scene" ]
+  sources = [
+    "MultiSampleSceneObject.cpp",
+    "MultiSampleSceneObject.hpp",
+    "Scene/DrawDesc.hpp",
+    "Scene/DrawableModel.hpp",
+    "Scene/GLError.hpp",
+    "Scene/InitDesc.hpp",
+    "Scene/MyMath.h",
+    "Scene/PassDesc.hpp",
+    "Scene/Scene.hpp",
+    "Scene/SceneImpl/SceneImpl.hpp",
+    "Scene/SceneImpl/SceneImplDestructor.cpp",
+    "Scene/SceneImpl/loadFBOs.cpp",
+    "Scene/SceneImpl/loadModels.cpp",
+    "Scene/SceneImpl/loadShaders.cpp",
+    "Scene/SceneImpl/loadTextures.cpp",
+    "Scene/SceneImpl/sdkmesh.cpp",
+    "Scene/SceneImpl/sdkmesh.h",
+    "Scene/SceneObject.hpp",
+    "Scene/Vector.hpp",
+    "Scene/log.hpp",
+    "Scene/src/Scene.cpp",
+    "Scene/src/SceneInitException.cpp",
+    "Scene/src/Vector.cpp",
+    "main.cpp",
+  ]
+  if (is_win) {
+    sources += [ "Scene/src/windows/MapWindowsImpl.cpp" ]
+  } else if (is_linux) {
+    sources += [ "Scene/src/linux/MapFileLinuxImpl.cpp" ]
+  }
+  deps = [
+    "//freeglut-3.0.0:freeglut",
+    "//glew-1.13.0:glew",
+    "//nvlib",
+  ]
+}

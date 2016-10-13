@@ -85,7 +85,7 @@ bool Model::loadObjFromFile( const char *file, Model &m) {
                     case 't':
                         //texcoord, 2 or 3 components
                         val[2] = 0.0f;  //default r coordinate
-                        match = fscanf( fp, "%f %f %f %f", &val[0], &val[1], &val[2]);
+                        match = fscanf( fp, "%f %f %f %*f", &val[0], &val[1], &val[2]);
                         m._texCoords.push_back( val[0]);
                         m._texCoords.push_back( val[1]);
                         m._texCoords.push_back( val[2]);

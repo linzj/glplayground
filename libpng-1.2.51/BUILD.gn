@@ -1,0 +1,39 @@
+declare_args() {
+}
+
+static_library("libpng") {
+  defines = [ "HAVE_CONFIG_H" ]
+  sources = [
+    "config.h",
+    "png.c",
+    "png.h",
+    "pngconf.h",
+    "pngerror.c",
+    "pnggccrd.c",
+    "pngget.c",
+    "pngmem.c",
+    "pngpread.c",
+    "pngread.c",
+    "pngrio.c",
+    "pngrtran.c",
+    "pngrutil.c",
+    "pngset.c",
+    "pngtest.c",
+    "pngtrans.c",
+    "pngvcrd.c",
+    "pngwio.c",
+    "pngwrite.c",
+    "pngwtran.c",
+    "pngwutil.c",
+  ]
+
+  configs += [ "//build/config:precompiled_headers" ]
+
+  public_deps = []
+  deps = []
+
+  if (!is_debug && (is_win || is_android)) {
+    configs -= [ "//build/config/compiler:default_optimization" ]
+    configs += [ "//build/config/compiler:optimize_max" ]
+  }
+}

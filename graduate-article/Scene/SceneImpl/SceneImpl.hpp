@@ -6,7 +6,7 @@
 #include <GL/glew.h>
 #include "../PassDesc.hpp"
 namespace lin {
-void* mapWholeFile(const char* filename, int* length);
+void* mapWholeFile(const char* filename, size_t* length);
 void unmapFile(void*);
 
 struct SceneFBODesc

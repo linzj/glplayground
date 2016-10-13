@@ -1,6 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 #include <stdio.h>
+#include <stdarg.h>
 
 namespace lin {
 static inline void

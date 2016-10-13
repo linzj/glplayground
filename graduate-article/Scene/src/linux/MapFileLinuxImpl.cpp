@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 namespace lin {
-void* mapWholeFile(const char* filename, int* length);
+void* mapWholeFile(const char* filename, size_t* length);
 void unmapFile(void*);
 typedef std::unordered_map<void*, int> FileMappingMap;
 static FileMappingMap g_map;
@@ -30,7 +30,7 @@ public:
 static Disposer g_disposer;
 
 void*
-mapWholeFile(const char* filename, int* length)
+mapWholeFile(const char* filename, size_t* length)
 {
   void* ret;
   int fd;

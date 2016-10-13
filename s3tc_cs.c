@@ -248,7 +248,7 @@ loadWorker(const char* name, char*** ppfragmentShaderSource, int* lineCount)
     exit(1);
   }
   currentlinecount = 0;
-  while (line = fgets(lineBuffer, 256, f)) {
+  while ((line = fgets(lineBuffer, 256, f))) {
     char* storeline = strdup(line);
     if (maxlinecount == currentlinecount) {
       myfragmentShaderSource =
@@ -380,8 +380,6 @@ GLfloat projectionMatrix[16];
 static void
 triangle_normal(void)
 {
-  FILE* file;
-  GLubyte* data;
   GLuint textureObject[3];
   GLuint pbo[1];
 
@@ -447,46 +445,6 @@ triangle_normal(void)
   glDeleteTextures(3, textureObject);
   glDeleteBuffers(1, pbo);
   checkError("triangle_normal");
-}
-
-static void
-triangle(void)
-{
-  GLint tmpFramebuffer;
-  GLint tmpRenderbuffer;
-  GLint viewport[4];
-  GLenum err;
-
-  checkError("triangle enter");
-  glGetIntegerv(GL_VIEWPORT, viewport);
-  glGenFramebuffers(1, (GLuint*)&tmpFramebuffer);
-  glGenRenderbuffers(1, (GLuint*)&tmpRenderbuffer);
-  glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
-  glBindRenderbuffer(GL_RENDERBUFFER, tmpRenderbuffer);
-  glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_RGBA, viewport[2],
-                                   viewport[3]);
-  err = glGetError();
-  if (err != GL_NO_ERROR) {
-    fprintf(stderr, "error occurs: %X.\n", err);
-    exit(1);
-  }
-  glBindRenderbuffer(GL_RENDERBUFFER, 0);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                            GL_RENDERBUFFER, tmpRenderbuffer);
-  if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
-    fprintf(stderr, "fbo is not completed.\n");
-    exit(1);
-  }
-  triangle_normal();
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  // blit here
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, tmpFramebuffer);
-  glBlitFramebuffer(0, 0, viewport[2], viewport[3], 0, 0, viewport[2],
-                    viewport[3], GL_COLOR_BUFFER_BIT, GL_LINEAR);
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-  glDeleteFramebuffers(1, (GLuint*)&tmpFramebuffer);
-  glDeleteRenderbuffers(1, (GLuint*)&tmpRenderbuffer);
-  checkError("triangle");
 }
 
 static void

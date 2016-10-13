@@ -40,6 +40,7 @@
 #endif
 
 #include <fcntl.h>
+#include <unistd.h>
 
 
 /*this should be defined in a header file */

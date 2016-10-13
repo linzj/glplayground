@@ -274,8 +274,8 @@ triangle_normal(void)
 static void
 triangle(void)
 {
-  GLint tmpFramebuffer;
-  GLint tmpRenderbuffer;
+  GLuint tmpFramebuffer;
+  GLuint tmpRenderbuffer;
   GLint viewport[4];
 
   glGetIntegerv(GL_VIEWPORT, viewport);

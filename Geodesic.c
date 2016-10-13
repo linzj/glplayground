@@ -338,9 +338,9 @@ dumpInfo(void)
 static void
 drawOnFbo(void)
 {
-  GLint tmpFramebuffer;
-  GLint tmpRenderbuffer;
-  GLint tmpRenderbufferDepth;
+  GLuint tmpFramebuffer;
+  GLuint tmpRenderbuffer;
+  GLuint tmpRenderbufferDepth;
   GLint viewport[4];
   GLint fboCompleteness;
 

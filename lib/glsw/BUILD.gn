@@ -1,0 +1,26 @@
+declare_args() {
+}
+
+config("glsw_config") {
+  include_dirs = [ "." ]
+}
+
+static_library("glsw") {
+  sources = [
+    "bstrlib.c",
+    "bstrlib.h",
+    "glsw.c",
+    "glsw.h",
+  ]
+
+  configs += [ "//build/config:precompiled_headers" ]
+
+  public_deps = []
+  deps = []
+  public_configs = [ ":glsw_config" ]
+
+  if (!is_debug && (is_win || is_android)) {
+    configs -= [ "//build/config/compiler:default_optimization" ]
+    configs += [ "//build/config/compiler:optimize_max" ]
+  }
+}

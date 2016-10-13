@@ -525,7 +525,6 @@ GLfloat projectionMatrix[16];
 static void
 triangle_normal(void)
 {
-  FILE* file;
   unsigned char* data;
   GLuint textureObject;
 
@@ -554,45 +553,6 @@ triangle_normal(void)
   glUniform1i(mytIndex, 0);
   glDrawArrays(GL_TRIANGLE_FAN, 0, numElements);
   glDeleteTextures(1, &textureObject);
-}
-
-static void
-triangle(void)
-{
-  GLint tmpFramebuffer;
-  GLint tmpRenderbuffer;
-  GLint viewport[4];
-  GLenum err;
-
-  glGetIntegerv(GL_VIEWPORT, viewport);
-  glGenFramebuffers(1, &tmpFramebuffer);
-  glGenRenderbuffers(1, &tmpRenderbuffer);
-  glBindFramebuffer(GL_FRAMEBUFFER, tmpFramebuffer);
-  glBindRenderbuffer(GL_RENDERBUFFER, tmpRenderbuffer);
-  glRenderbufferStorageMultisample(GL_RENDERBUFFER, 16, GL_RGBA, viewport[2],
-                                   viewport[3]);
-  err = glGetError();
-  if (err != GL_NO_ERROR) {
-    fprintf(stderr, "error occurs: %X.\n", err);
-    exit(1);
-  }
-  glBindRenderbuffer(GL_RENDERBUFFER, 0);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                            GL_RENDERBUFFER, tmpRenderbuffer);
-  if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
-    fprintf(stderr, "fbo is not completed.\n");
-    exit(1);
-  }
-  triangle_normal();
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  // blit here
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, tmpFramebuffer);
-  glBlitFramebuffer(0, 0, viewport[2], viewport[3], 0, 0, viewport[2],
-                    viewport[3], GL_COLOR_BUFFER_BIT, GL_LINEAR);
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-  glDeleteFramebuffers(1, &tmpFramebuffer);
-  glDeleteRenderbuffers(1, &tmpRenderbuffer);
-  checkError("triangle");
 }
 
 static void

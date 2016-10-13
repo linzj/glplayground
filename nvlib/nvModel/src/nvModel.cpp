@@ -317,7 +317,7 @@ void Model::compileModel( Model::PrimType prim) {
                     std::multimap<Edge, GLuint>::iterator limit = edges.upper_bound(w);
                     GLuint adjVertex = 0;
 
-                    while ( it != edges.end() && it->second == ii /3 && it != limit)
+                    while ( it != edges.end() && it->second == (GLuint)(ii / 3) && it != limit)
                         it++;
 
                     if ( it == edges.end() || it == limit || it->first.pIndex[0] != w.pIndex[0] || it->first.pIndex[1] != w.pIndex[1] ) {
