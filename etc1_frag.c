@@ -388,7 +388,7 @@ display(void)
   } else {
     triangle_normal();
   }
-  glFinish();
+  glutSwapBuffers();
 #ifdef _WIN32
   QueryPerformanceCounter(&t2);
   QueryPerformanceFrequency(&freq);
@@ -499,7 +499,7 @@ main(int argc, char** argv)
 {
   int menuA;
   glutInit(&argc, argv);
-  glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
   /* add command line argument "classic" for a pre-3.x context */
   if ((argc != 2) || (strcmp(argv[1], "classic") != 0)) {
     glutInitContextVersion(3, 3);

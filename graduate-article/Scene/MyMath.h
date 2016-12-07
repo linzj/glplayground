@@ -119,14 +119,14 @@ getLowerPowerOfTwo(const unsigned int x)
   return i >> 1;
 }
 
-inline int
-round(float x)
-{
-  if (x > 0) {
-    return int(x + 0.5f);
-  } else {
-    return int(x - 0.5f);
-  }
-}
+// inline int
+// round(float x)
+// {
+//   if (x > 0) {
+//     return int(x + 0.5f);
+//   } else {
+//     return int(x - 0.5f);
+//   }
+// }
 
 #endif // _MYMATH_H_
