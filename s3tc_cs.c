@@ -50,7 +50,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#if !defined(_WIN32)
 #include <unistd.h>
+#endif
 #ifdef _WIN32
 #include <Windows.h>
 #else

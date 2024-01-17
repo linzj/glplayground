@@ -15,11 +15,13 @@
 #ifndef NV_MODEL_H
 #define NV_MODEL_H
 
-#ifdef ___WIN32
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #ifdef NVMODEL_EXPORTS
-#define NVSDKENTRY __declspec(dllexport)
+#define NVSDKENTRY
 #else
-#define NVSDKENTRY __declspec(dllimport)
+#define NVSDKENTRY
 #endif
 #else 
 #define NVSDKENTRY

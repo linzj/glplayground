@@ -14,11 +14,13 @@
 #ifndef NV_IMAGE_H
 #define NV_IMAGE_H
 
-#ifdef ___WIN32
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #ifdef NVIMAGE_EXPORTS
-#define NVSDKENTRY __declspec(dllexport)
+#define NVSDKENTRY
 #else
-#define NVSDKENTRY __declspec(dllimport)
+#define NVSDKENTRY
 #endif
 #else
 #define NVSDKENTRY

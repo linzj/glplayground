@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "sdkmesh.h"
 #include "../DrawableModel.hpp"
 #include <GL/glew.h>
@@ -332,7 +333,11 @@ SdkModel::initInDirectBufferIfOkay(SDKMESH_MESH* mesh, SDKMESH_SUBSET* subset,
     UINT* cur_index = subset_indices + i;
     SDKMESH_SUBSET* cur = subset + *cur_index;
     if (cur->PrimitiveType != PT_TRIANGLE_LIST)
+#ifdef _MSC_VER
+      __assume(0);
+#else
       __builtin_unreachable();
+#endif
     DrawElementsIndirectCommand* curcmd = cmds + i;
     curcmd->count = cur->IndexCount;
     curcmd->instanceCount = 1;
