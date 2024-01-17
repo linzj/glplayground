@@ -29,10 +29,9 @@
 #include <vector>
 #include <assert.h>
 
-//#include <GL/glew.h>
+#include <GL/glew.h>
 #ifndef GL3_H
 #include <GL/gl.h>
-#include <GL/glext.h>
 #endif
 
 namespace nv {
