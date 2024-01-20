@@ -1,6 +1,6 @@
 #version 430
 layout(local_size_x = 1, local_size_y = 1) in;
-layout(rgba8) uniform readonly image2D u_Texture;
+layout(binding = 0, rgba8) uniform readonly image2D u_Texture;
 
 struct member
 {

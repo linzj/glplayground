@@ -123,6 +123,28 @@ const char* fragmentShaderSource[] = {
   "}\n"
 };
 
+#define ENABLE_GL_DEBUG_LAYER 1
+#if !defined(NDEBUG) && defined(ENABLE_GL_DEBUG_LAYER)
+static void GLAPIENTRY debugCallback(GLenum source,
+                          GLenum type,
+                          GLuint id,
+                          GLenum severity,
+                          GLsizei length,
+                          const GLchar* message,
+                          const void* userParam)
+{
+  const char* serverity_str = "unknown serverity";
+  switch (severity) {
+    case GL_DEBUG_SEVERITY_HIGH:         serverity_str = "High"; break;
+    case GL_DEBUG_SEVERITY_MEDIUM:       serverity_str = "Medium"; break;
+    case GL_DEBUG_SEVERITY_LOW:          serverity_str = "Low"; break;
+    case GL_DEBUG_SEVERITY_NOTIFICATION: serverity_str = "Notification"; break;
+  }
+  fprintf(stderr, "GLDEBUG: %s: %s; source: %x; type: %x; id: %x"
+    "; userParam: %p.\n", serverity_str, message, source, type, id, userParam);
+}
+#endif
+
 static char** computeShaderSourceETC1;
 static int computeShaderSourceETC1LineCount;
 static char** computeShaderSourceS3TC;
@@ -354,6 +376,16 @@ init(void)
     exit(1);
   }
 
+#if !defined(NDEBUG) && defined(ENABLE_GL_DEBUG_LAYER)
+  if (GLEW_KHR_debug) {
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(debugCallback, NULL);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL,
+                             GL_TRUE);
+  }
+#endif
+
   initTextureDatas();
   initBuffer();
   initShader();
@@ -423,8 +455,6 @@ triangle_normal(void)
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, pbo[0]);
   glBindImageTexture(0, textureObject[1], 0, GL_FALSE, 0, GL_READ_ONLY,
                      GL_RGBA8);
-  // assume input image unit is 1
-  glUniform1i(u_TextureComputeS3TC, 0);
   glDispatchCompute(encoded_width / 4, encoded_height / 4, 1);
   // pixel buffer barrier
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_PIXEL_BUFFER_BARRIER_BIT);
